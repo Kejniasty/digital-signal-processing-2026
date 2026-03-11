@@ -1,3 +1,5 @@
+import math
+import random
 from enum import Enum
 
 
@@ -13,6 +15,7 @@ class Signal(object):
         self.period = period
         # As the signal is not continuous in any case because of coding limitations we need the info for comparing the two signals.
         # If their sample rates were not the same it would break most of the calculations
+        # Probably should be calculated from the len of the signal and duration, for now it isn't changing anywhere so this is fine.
         self.sample_rate = SAMPLE_RATE
 
     def pad(self, other: "Signal"):
@@ -85,6 +88,13 @@ class Signal(object):
 
         return Signal(new_signal, self.amplitude / other.amplitude, new_duration, self.start_time, self.period)
 
+    def __str__(self):
+        output = f"{self.amplitude};{self.duration};{self.start_time};{self.period};\n"
+        for signal in self.signal:
+            output += f"{signal} "
+        output += "\n"
+        return output
+
 
 def pad_array(array: list, length: int):
     """Pad the given array with length amount of zeros."""
@@ -93,8 +103,54 @@ def pad_array(array: list, length: int):
     return array
 
 
-def generate_continuous_signal(amplitude: float, duration: float, start_time: float, period: float):
+def generate_continuous_signal(amplitude: float, duration: float, start_time: float, period: float, type: "SignalType", fill_coefficent = 0.0):
+    """Generates a pseudo-continous signal with a given amplitude, duration, start time, period and a type. Returns a Signal object."""
     signal = []
+    sample_amount = int(round(duration * SAMPLE_RATE, 0))
+    match type:
+        case SignalType.UNIFORM_NOISE:
+            for i in range(sample_amount):
+                signal.append(random.uniform(-amplitude, amplitude))
+        case SignalType.GAUSSIAN_NOISE:
+            for i in range(sample_amount):
+                signal.append(random.gauss() * amplitude)
+        case SignalType.SINE:
+            for i in range(sample_amount):
+                signal.append(amplitude * math.sin((2 * math.pi / period) * (i - start_time)))
+        case SignalType.HALF_WAVE_RECT_SINE:
+            for i in range(sample_amount):
+                signal.append(0.5 * amplitude * (math.sin((2 * math.pi / period) * (i - start_time))
+                                                 + math.sin((2 * math.pi / period) * (i - start_time))))
+        case SignalType.FULL_WAVE_RECT_SINE:
+            for i in range(sample_amount):
+                signal.append(amplitude * abs(math.sin((2 * math.pi / period) * (i - start_time))))
+        case SignalType.RECT:
+            for i in range(sample_amount):
+                t = i / SAMPLE_RATE
+                local_t = (t - start_time) % period
+
+                if 0 <= local_t < fill_coefficent * period:
+                    signal.append(amplitude)
+                elif fill_coefficent * period <= local_t < period:
+                    signal.append(0)
+        case SignalType.RECT_SYMMETRIC:
+            for i in range(sample_amount):
+                t = i / SAMPLE_RATE
+                local_t = (t - start_time) % period
+
+                if 0 <= local_t < fill_coefficent * period:
+                    signal.append(amplitude)
+                elif fill_coefficent * period <= local_t < period:
+                    signal.append(-amplitude)
+        case SignalType.TRIANGULAR:
+            for i in range(sample_amount):
+                t = i / SAMPLE_RATE
+                local_t = (t - start_time) % period
+
+                if 0 <= local_t < fill_coefficent * period:
+                    signal.append(amplitude)
+                elif fill_coefficent * period <= local_t < period:
+                    signal.append(-amplitude)
 
     return Signal(signal, amplitude, duration, start_time, period)
 
@@ -113,4 +169,4 @@ class SignalType(Enum):
     DIRAC_DELTA = 9
     IMPULSE_NOISE = 10
 
-SAMPLE_RATE = 1000
+SAMPLE_RATE = 100
