@@ -103,7 +103,7 @@ def pad_array(array: list, length: int):
     return array
 
 
-def generate_continuous_signal(amplitude: float, duration: float, start_time: float, period: float, type: "SignalType", fill_coefficent = 0.0):
+def generate_continuous_signal(amplitude: float, duration: float, start_time: float, period: float, type: "SignalType", add_coefficent = 0.0):
     """Generates a pseudo-continous signal with a given amplitude, duration, start time, period and a type. Returns a Signal object."""
     signal = []
     sample_amount = int(round(duration * SAMPLE_RATE, 0))
@@ -129,28 +129,33 @@ def generate_continuous_signal(amplitude: float, duration: float, start_time: fl
                 t = i / SAMPLE_RATE
                 local_t = (t - start_time) % period
 
-                if 0 <= local_t < fill_coefficent * period:
+                if 0 <= local_t < add_coefficent * period:
                     signal.append(amplitude)
-                elif fill_coefficent * period <= local_t < period:
+                elif add_coefficent * period <= local_t < period:
                     signal.append(0)
         case SignalType.RECT_SYMMETRIC:
             for i in range(sample_amount):
                 t = i / SAMPLE_RATE
                 local_t = (t - start_time) % period
 
-                if 0 <= local_t < fill_coefficent * period:
+                if 0 <= local_t < add_coefficent * period:
                     signal.append(amplitude)
-                elif fill_coefficent * period <= local_t < period:
+                elif add_coefficent * period <= local_t < period:
                     signal.append(-amplitude)
         case SignalType.TRIANGULAR:
             for i in range(sample_amount):
                 t = i / SAMPLE_RATE
                 local_t = (t - start_time) % period
 
-                if 0 <= local_t < fill_coefficent * period:
+                if 0 <= local_t < add_coefficent * period:
                     signal.append(amplitude)
-                elif fill_coefficent * period <= local_t < period:
+                elif add_coefficent * period <= local_t < period:
                     signal.append(-amplitude)
+        case SignalType.HEAVISIDE_STEP:
+            for i in range(sample_amount):
+                t = i / SAMPLE_RATE
+
+
 
     return Signal(signal, amplitude, duration, start_time, period)
 
