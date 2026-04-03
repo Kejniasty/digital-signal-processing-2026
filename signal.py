@@ -1,12 +1,13 @@
 import math
 import random
+import signal
 from enum import Enum
 
 
 class Signal(object):
     """Class to represent a signal, needs an amplitude, duration, start time and period."""
 
-    def __init__(self, signal: list, amplitude: float, duration: float, start_time: float, period: float):
+    def __init__(self, signal: list, amplitude: float, duration: float, start_time: float, period: float, sample_rate = 100):
         """Base constructor for signal object."""
         self.signal = signal.copy()
         self.amplitude = amplitude
@@ -16,7 +17,7 @@ class Signal(object):
         # As the signal is not continuous in any case because of coding limitations we need the info for comparing the two signals.
         # If their sample rates were not the same it would break most of the calculations
         # Probably should be calculated from the len of the signal and duration, for now it isn't changing anywhere so this is fine.
-        self.sample_rate = SAMPLE_RATE
+        self.sample_rate = sample_rate
 
     def pad(self, other: "Signal"):
         """Pad the shorter signal with enough zeros - returns copies of both of the signals."""
@@ -40,7 +41,6 @@ class Signal(object):
         """Add two signals together - this also affects the amplitude and duration of the resulting signal."""
         if self.sample_rate != other.sample_rate:
             raise ValueError("Sample rate mismatch")
-
         new_signal = []
         self_signal, other_signal, new_duration = self.pad(other)
 
@@ -103,10 +103,12 @@ def pad_array(array: list, length: int):
     return array
 
 
-def generate_continuous_signal(amplitude: float, duration: float, start_time: float, period: float, type: "SignalType", add_coefficent = 0.0):
-    """Generates a pseudo-continous signal with a given amplitude, duration, start time, period and a type. Returns a Signal object."""
+def generate_continuous_signal(amplitude: float, duration: float, start_time: float, period: float, type: "SignalType", add_coefficient = 0.0, sample_rate = 100):
+    """Generates a pseudo-continous signal with a given amplitude, duration, start time, period and a type.
+     Coefficient works as a substitute for all various variables of each signal sometimes used for their generation.
+     Returns a Signal object."""
     signal = []
-    sample_amount = int(round(duration * SAMPLE_RATE, 0))
+    sample_amount = int(round(duration * sample_rate, 0))
     match type:
         case SignalType.UNIFORM_NOISE:
             for i in range(sample_amount):
@@ -126,42 +128,64 @@ def generate_continuous_signal(amplitude: float, duration: float, start_time: fl
                 signal.append(amplitude * abs(math.sin((2 * math.pi / period) * (i - start_time))))
         case SignalType.RECT:
             for i in range(sample_amount):
-                t = i / SAMPLE_RATE
+                t = i / sample_rate
                 local_t = (t - start_time) % period
 
-                if 0 <= local_t < add_coefficent * period:
+                if 0 <= local_t < add_coefficient * period:
                     signal.append(amplitude)
-                elif add_coefficent * period <= local_t < period:
+                elif add_coefficient * period <= local_t < period:
                     signal.append(0)
         case SignalType.RECT_SYMMETRIC:
             for i in range(sample_amount):
-                t = i / SAMPLE_RATE
+                t = i / sample_rate
                 local_t = (t - start_time) % period
 
-                if 0 <= local_t < add_coefficent * period:
+                if 0 <= local_t < add_coefficient * period:
                     signal.append(amplitude)
-                elif add_coefficent * period <= local_t < period:
+                elif add_coefficient * period <= local_t < period:
                     signal.append(-amplitude)
         case SignalType.TRIANGULAR:
             for i in range(sample_amount):
-                t = i / SAMPLE_RATE
+                t = i / sample_rate
                 local_t = (t - start_time) % period
 
-                if 0 <= local_t < add_coefficent * period:
-                    signal.append(amplitude)
-                elif add_coefficent * period <= local_t < period:
-                    signal.append(-amplitude)
+                if 0 <= local_t < add_coefficient * period:
+                    signal.append((amplitude / (add_coefficient * period)) * local_t)
+                elif add_coefficient * period <= local_t < period:
+                    signal.append((-amplitude / ((1 - add_coefficient) * period) ) * local_t + amplitude / (1 - add_coefficient))
         case SignalType.HEAVISIDE_STEP:
             for i in range(sample_amount):
-                t = i / SAMPLE_RATE
-
-
+                t = i / sample_rate
+                if t < add_coefficient:
+                    signal.append(0)
+                elif t == add_coefficient:
+                    signal.append(amplitude / 2)
+                else:
+                    signal.append(amplitude)
 
     return Signal(signal, amplitude, duration, start_time, period)
 
+def generate_discrete_signal(amplitude: float, duration: float, start_time: float, period: float, type: "SignalType", coefficient, sample_rate = 100):
+    sample_amount = int(round(duration * sample_rate, 0))
+    signal = []
+    match type:
+        case SignalType.DIRAC_DELTA:
+            for i in range(sample_amount):
+                if i == coefficient:
+                    signal.append(amplitude)
+                else:
+                    signal.append(0)
+        case SignalType.IMPULSE_NOISE:
+            for i in range(sample_amount):
+                signal.append(0)
+            for i in range(int(round(coefficient * sample_amount, 0))):
+                signal[random.randint(0, sample_amount - 1)] = amplitude
+
+    return Signal(signal, amplitude, duration, start_time, period)
 
 # typedef
 class SignalType(Enum):
+    # continuous
     UNIFORM_NOISE = 0
     GAUSSIAN_NOISE = 1
     SINE = 2
@@ -171,7 +195,7 @@ class SignalType(Enum):
     RECT_SYMMETRIC = 6
     TRIANGULAR = 7
     HEAVISIDE_STEP = 8
+    # discrete
     DIRAC_DELTA = 9
     IMPULSE_NOISE = 10
 
-SAMPLE_RATE = 100
