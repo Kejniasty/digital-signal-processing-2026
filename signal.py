@@ -95,6 +95,19 @@ class Signal(object):
         output += "\n"
         return output
 
+    def from_string(self, string: str):
+        lines = string.split("\n")
+        stats = lines[0].split(";")
+        self.amplitude = float(stats[0])
+        self.duration = float(stats[1])
+        self.start_time = float(stats[2])
+        self.period = float(stats[3])
+
+        self.signal = []
+        signals = lines[1].split(" ")
+        for amp in signals:
+            self.signal.append(float(amp))
+
 
 def pad_array(array: list, length: int):
     """Pad the given array with length amount of zeros."""
