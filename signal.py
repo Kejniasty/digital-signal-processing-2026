@@ -7,9 +7,12 @@ from enum import Enum
 class Signal(object):
     """Class to represent a signal, needs an amplitude, duration, start time and period."""
 
-    def __init__(self, signal: list, amplitude: float, duration: float, start_time: float, period: float, sample_rate = 100):
+    def __init__(self, signal: list = None, amplitude: float = 0.0,
+                 duration: float = 0.0, start_time: float = 0.0,
+                 period: float = 0.0, sample_rate = 100):
         """Base constructor for signal object."""
-        self.signal = signal.copy()
+        if signal is not None:
+            self.signal = signal.copy()
         self.amplitude = amplitude
         self.start_time = start_time
         self.duration = duration
@@ -104,7 +107,7 @@ class Signal(object):
         self.period = float(stats[3])
 
         self.signal = []
-        signals = lines[1].split(" ")
+        signals = lines[1].strip().split(" ")
         for amp in signals:
             self.signal.append(float(amp))
 

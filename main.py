@@ -1,5 +1,6 @@
 import signal
 import plot
+import file_operations as file
 
 if __name__ == "__main__":
     print("Hello World")
@@ -11,3 +12,8 @@ if __name__ == "__main__":
     print(test_signal)
     plot.generate_plot(test_signal)
     plot.generate_discrete_plot(test_discrete_signal)
+
+    filename = "test.txt"
+    file.signal_to_file(test_signal, filename)
+    test_signal = file.signal_from_file(filename)
+    print(test_signal)
