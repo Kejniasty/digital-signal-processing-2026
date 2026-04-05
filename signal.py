@@ -190,9 +190,10 @@ def generate_discrete_signal(amplitude: float, duration: float, start_time: floa
                     signal.append(0)
         case SignalType.IMPULSE_NOISE:
             for i in range(sample_amount):
-                signal.append(0)
-            for i in range(int(round(coefficient * sample_amount, 0))):
-                signal[random.randint(0, sample_amount - 1)] = amplitude
+                if random.random() < coefficient:
+                    signal.append(amplitude)
+                else:
+                    signal.append(0)
 
     return Signal(signal, amplitude, duration, start_time, period)
 
