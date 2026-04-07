@@ -35,10 +35,10 @@
    <widget class="QWidget" name="plots" native="true">
     <property name="geometry">
      <rect>
-      <x>240</x>
+      <x>310</x>
       <y>10</y>
-      <width>871</width>
-      <height>631</height>
+      <width>801</width>
+      <height>621</height>
      </rect>
     </property>
    </widget>
@@ -47,8 +47,8 @@
      <rect>
       <x>10</x>
       <y>10</y>
-      <width>221</width>
-      <height>468</height>
+      <width>291</width>
+      <height>622</height>
      </rect>
     </property>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -258,6 +258,77 @@
           <string>Load signal</string>
          </property>
         </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="savePlot">
+         <property name="text">
+          <string>Save Plot</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout_4">
+           <item>
+            <widget class="QComboBox" name="firstSig"/>
+           </item>
+           <item>
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>First Signal</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <item>
+            <widget class="QPushButton" name="addBtn">
+             <property name="text">
+              <string>+</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="subBtn">
+             <property name="text">
+              <string>-</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="multBtn">
+             <property name="text">
+              <string>*</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="divBtn">
+             <property name="text">
+              <string>/</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <item>
+            <widget class="QComboBox" name="secSig"/>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_2">
+             <property name="text">
+              <string>Second Signal</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
        </item>
       </layout>
      </item>
