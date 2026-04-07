@@ -1,6 +1,5 @@
 import math
 import random
-import signal
 from enum import Enum
 
 
@@ -215,4 +214,3 @@ class SignalType(Enum):
     # discrete
     DIRAC_DELTA = 9
     IMPULSE_NOISE = 10
-

@@ -29,3 +29,11 @@ def generate_discrete_plot(signal: "Signal") -> None:
 
     plt.show()
 
+def plot_histogram(signal, bins=5, title="Signal histogram"):
+    plt.figure(figsize=(8, 4))
+    plt.hist(signal, bins=bins, color="mediumseagreen", edgecolor="black")
+    plt.title(title)
+    plt.xlabel("Value")
+    plt.ylabel("Count")
+    plt.grid(True, alpha=0.3)
+    plt.show()

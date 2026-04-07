@@ -1,4 +1,4 @@
-import signal
+import dsp_signal as signal
 import plot
 import file_operations as file
 
@@ -12,6 +12,7 @@ if __name__ == "__main__":
     print(test_signal)
     plot.generate_plot(test_signal)
     plot.generate_discrete_plot(test_discrete_signal)
+    plot.plot_histogram(test_signal.signal, bins=10, title="Histogram of the signal")
 
     filename = "test.txt"
     file.signal_to_file(test_signal, filename)

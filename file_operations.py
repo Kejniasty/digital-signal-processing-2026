@@ -1,4 +1,4 @@
-from signal import signal, Signal
+from dsp_signal import Signal
 
 
 def signal_to_file(signal: "Signal", filename: str):
