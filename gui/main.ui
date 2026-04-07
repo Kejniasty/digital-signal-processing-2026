@@ -6,20 +6,26 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>799</width>
-    <height>535</height>
+    <width>1128</width>
+    <height>656</height>
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
   <property name="minimumSize">
    <size>
-    <width>799</width>
-    <height>535</height>
+    <width>1128</width>
+    <height>656</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>1128</width>
+    <height>656</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -29,10 +35,10 @@
    <widget class="QWidget" name="plots" native="true">
     <property name="geometry">
      <rect>
-      <x>170</x>
+      <x>240</x>
       <y>10</y>
-      <width>611</width>
-      <height>501</height>
+      <width>871</width>
+      <height>631</height>
      </rect>
     </property>
    </widget>
@@ -41,8 +47,8 @@
      <rect>
       <x>10</x>
       <y>10</y>
-      <width>149</width>
-      <height>342</height>
+      <width>221</width>
+      <height>468</height>
      </rect>
     </property>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -56,7 +62,14 @@
         </widget>
        </item>
        <item>
-        <widget class="QSpinBox" name="amplitude"/>
+        <widget class="QSpinBox" name="amplitude">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>2147483647</number>
+         </property>
+        </widget>
        </item>
        <item>
         <widget class="QLabel" name="freqLabel">
@@ -66,7 +79,14 @@
         </widget>
        </item>
        <item>
-        <widget class="QSpinBox" name="frequency"/>
+        <widget class="QSpinBox" name="frequency">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>2147483647</number>
+         </property>
+        </widget>
        </item>
        <item>
         <widget class="QLabel" name="durLabel">
@@ -76,17 +96,84 @@
         </widget>
        </item>
        <item>
-        <widget class="QSpinBox" name="duration"/>
+        <widget class="QSpinBox" name="duration">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>2147483647</number>
+         </property>
+        </widget>
        </item>
        <item>
-        <widget class="QLabel" name="label">
+        <widget class="QLabel" name="startTimeLabel">
+         <property name="text">
+          <string>Start time</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="startTime">
+         <property name="minimum">
+          <number>0</number>
+         </property>
+         <property name="maximum">
+          <number>2147483647</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="coeffLabel">
+         <property name="text">
+          <string>Coefficient</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QDoubleSpinBox" name="coeff">
+         <property name="minimum">
+          <double>0.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>1.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.010000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.500000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="sampleRateLabel">
+         <property name="text">
+          <string>Sample rate</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="sampleRate">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>2147483647</number>
+         </property>
+         <property name="value">
+          <number>100</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="typeLabel">
          <property name="text">
           <string>Type</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="comboBox">
+        <widget class="QComboBox" name="typeDropdown">
          <item>
           <property name="text">
            <string>Uniform</string>
@@ -176,6 +263,16 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout">
+       <item row="1" column="0">
+        <widget class="QLabel" name="binLabel">
+         <property name="text">
+          <string>bins: 5</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="0">
         <widget class="QSlider" name="bins">
          <property name="minimum">
@@ -192,16 +289,6 @@
          </property>
          <property name="orientation">
           <enum>Qt::Orientation::Vertical</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="binLabel">
-         <property name="text">
-          <string>bins: 0</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignmentFlag::AlignCenter</set>
          </property>
         </widget>
        </item>

@@ -3,205 +3,191 @@ import random
 from enum import Enum
 
 
-class Signal(object):
-    """Class to represent a signal, needs an amplitude, duration, start time and period."""
+class Signal:
+    """Represents a continuous or discrete signal."""
 
-    def __init__(self, signal: list = None, amplitude: float = 0.0,
-                 duration: float = 0.0, start_time: float = 0.0,
-                 period: float = 0.0, sample_rate = 100):
-        """Base constructor for signal object."""
-        if signal is not None:
-            self.signal = signal.copy()
+    def __init__(self, signal=None, amplitude=0.0, duration=0.0,
+                 start_time=0.0, period=0.0, sample_rate=100):
+        self.signal = signal.copy() if signal is not None else []
         self.amplitude = amplitude
-        self.start_time = start_time
         self.duration = duration
+        self.start_time = start_time
         self.period = period
-        # As the signal is not continuous in any case because of coding limitations we need the info for comparing the two signals.
-        # If their sample rates were not the same it would break most of the calculations
-        # Probably should be calculated from the len of the signal and duration, for now it isn't changing anywhere so this is fine.
         self.sample_rate = sample_rate
 
+        # Generate time axis
+        self.time = [
+            start_time + i / sample_rate
+            for i in range(len(self.signal))
+        ]
+
     def pad(self, other: "Signal"):
-        """Pad the shorter signal with enough zeros - returns copies of both of the signals."""
-
-        other_signal = other.signal.copy()
+        """Pad the shorter signal with zeros so both have equal length."""
         self_signal = self.signal.copy()
-        new_duration = 0
+        other_signal = other.signal.copy()
 
-        if self.duration > other.duration:
-            other_signal = pad_array(other_signal, len(self.signal) - len(other.signal))
+        if len(self_signal) > len(other_signal):
+            diff = len(self_signal) - len(other_signal)
+            other_signal.extend([0] * diff)
             new_duration = self.duration
-        elif self.duration < other.duration:
-            self_signal = pad_array(self_signal, len(other.signal) - len(self.signal))
+        elif len(self_signal) < len(other_signal):
+            diff = len(other_signal) - len(self_signal)
+            self_signal.extend([0] * diff)
             new_duration = other.duration
-        # if neither is true it means that they are equal in length and padding is not needed
+        else:
+            new_duration = max(self.duration, other.duration)
 
         return self_signal, other_signal, new_duration
 
-
     def __add__(self, other: "Signal"):
-        """Add two signals together - this also affects the amplitude and duration of the resulting signal."""
-        if self.sample_rate != other.sample_rate:
-            raise ValueError("Sample rate mismatch")
-        new_signal = []
-        self_signal, other_signal, new_duration = self.pad(other)
-
-        for i in range(len(self_signal)):
-            new_signal.append(other_signal[i] + self_signal[i])
-
-        return Signal(new_signal, self.amplitude + other.amplitude, new_duration, self.start_time, self.period)
-
-    def __sub__(self, other):
-        """Subtract other from self - this also affects amplitude and duration of the resulting signal."""
         if self.sample_rate != other.sample_rate:
             raise ValueError("Sample rate mismatch")
 
-        new_signal = []
-        self_signal, other_signal, new_duration = self.pad(other)
+        s1, s2, new_duration = self.pad(other)
+        new_signal = [a + b for a, b in zip(s1, s2)]
+        new_amplitude = max(abs(x) for x in new_signal)
 
-        for i in range(len(self_signal)):
-            new_signal.append(self_signal[i] - other_signal[i])
+        return Signal(new_signal, new_amplitude, new_duration,
+                      self.start_time, self.period, self.sample_rate)
 
-        return Signal(new_signal, self.amplitude - other.amplitude, new_duration, self.start_time, self.period)
+    def __sub__(self, other: "Signal"):
+        if self.sample_rate != other.sample_rate:
+            raise ValueError("Sample rate mismatch")
+
+        s1, s2, new_duration = self.pad(other)
+        new_signal = [a - b for a, b in zip(s1, s2)]
+        new_amplitude = max(abs(x) for x in new_signal)
+
+        return Signal(new_signal, new_amplitude, new_duration,
+                      self.start_time, self.period, self.sample_rate)
 
     def __mul__(self, other: "Signal"):
-        """Multiplies two signals together - this also affects the amplitude and duration of the resulting signal."""
         if self.sample_rate != other.sample_rate:
             raise ValueError("Sample rate mismatch")
 
-        new_signal = []
-        self_signal, other_signal, new_duration = self.pad(other)
+        s1, s2, new_duration = self.pad(other)
+        new_signal = [a * b for a, b in zip(s1, s2)]
+        new_amplitude = max(abs(x) for x in new_signal)
 
-        for i in range(len(self_signal)):
-            new_signal.append(other_signal[i] * self_signal[i])
-
-        return Signal(new_signal, self.amplitude * other.amplitude, new_duration, self.start_time, self.period)
+        return Signal(new_signal, new_amplitude, new_duration,
+                      self.start_time, self.period, self.sample_rate)
 
     def __truediv__(self, other: "Signal"):
-        """Divides self by other - this also affects the amplitude and duration of the resulting signal."""
         if self.sample_rate != other.sample_rate:
             raise ValueError("Sample rate mismatch")
 
-        new_signal = []
-        self_signal, other_signal, new_duration = self.pad(other)
+        s1, s2, new_duration = self.pad(other)
+        new_signal = [
+            a / b if b != 0 else 0
+            for a, b in zip(s1, s2)
+        ]
+        new_amplitude = max(abs(x) for x in new_signal)
 
-        for i in range(len(self_signal)):
-            new_signal.append(self_signal[i] / other_signal[i])
-
-        return Signal(new_signal, self.amplitude / other.amplitude, new_duration, self.start_time, self.period)
+        return Signal(new_signal, new_amplitude, new_duration,
+                      self.start_time, self.period, self.sample_rate)
 
     def __str__(self):
-        output = f"{self.amplitude};{self.duration};{self.start_time};{self.period};\n"
-        for signal in self.signal:
-            output += f"{signal} "
-        output += "\n"
-        return output
+        header = f"{self.amplitude};{self.duration};{self.start_time};{self.period};{self.sample_rate}\n"
+        values = " ".join(str(x) for x in self.signal)
+        return header + values + "\n"
 
     def from_string(self, string: str):
         lines = string.split("\n")
         stats = lines[0].split(";")
+
         self.amplitude = float(stats[0])
         self.duration = float(stats[1])
         self.start_time = float(stats[2])
         self.period = float(stats[3])
+        self.sample_rate = int(stats[4])
 
-        self.signal = []
-        signals = lines[1].strip().split(" ")
-        for amp in signals:
-            self.signal.append(float(amp))
-
-
-def pad_array(array: list, length: int):
-    """Pad the given array with length amount of zeros."""
-    for i in range(length):
-        array.append(0)
-    return array
+        self.signal = [float(x) for x in lines[1].split()]
+        self.time = [
+            self.start_time + i / self.sample_rate
+            for i in range(len(self.signal))
+        ]
 
 
-def generate_continuous_signal(amplitude: float, duration: float, start_time: float, period: float, type: "SignalType", add_coefficient = 0.0, sample_rate = 100):
-    """Generates a pseudo-continous signal with a given amplitude, duration, start time, period and a type.
-     Coefficient works as a substitute for all various variables of each signal sometimes used for their generation.
-     Returns a Signal object."""
+def generate_continuous_signal(amplitude, duration, start_time,
+                               period, type: "SignalType",
+                               coefficient=0.0, sample_rate=100):
+
+        sample_amount = int(duration * sample_rate)
+        signal = []
+
+        for i in range(sample_amount):
+            t = start_time + i / sample_rate
+
+            match type:
+                case SignalType.UNIFORM_NOISE:
+                    signal.append(random.uniform(-amplitude, amplitude))
+
+                case SignalType.GAUSSIAN_NOISE:
+                    signal.append(random.gauss(0, amplitude))
+
+                case SignalType.SINE:
+                    signal.append(amplitude * math.sin(2 * math.pi * (t / period)))
+
+                case SignalType.HALF_WAVE_RECT_SINE:
+                    s = amplitude * math.sin(2 * math.pi * (t / period))
+                    signal.append(max(0, s))
+
+                case SignalType.FULL_WAVE_RECT_SINE:
+                    s = amplitude * math.sin(2 * math.pi * (t / period))
+                    signal.append(abs(s))
+
+                case SignalType.RECT:
+                    local_t = (t - start_time) % period
+                    duty = coefficient * period
+                    signal.append(amplitude if local_t < duty else 0)
+
+                case SignalType.RECT_SYMMETRIC:
+                    local_t = (t - start_time) % period
+                    duty = coefficient * period
+                    signal.append(amplitude if local_t < duty else -amplitude)
+
+                case SignalType.TRIANGULAR:
+                    local_t = (t - start_time) % period
+                    if local_t < coefficient * period:
+                        signal.append((amplitude / (coefficient * period)) * local_t)
+                    else:
+                        signal.append(
+                            amplitude - (amplitude / ((1 - coefficient) * period)) *
+                            (local_t - coefficient * period)
+                        )
+
+                case SignalType.HEAVISIDE_STEP:
+                    if t < coefficient:
+                        signal.append(0)
+                    elif t == coefficient:
+                        signal.append(amplitude / 2)
+                    else:
+                        signal.append(amplitude)
+
+        return Signal(signal, amplitude, duration, start_time, period, sample_rate)
+
+
+def generate_discrete_signal(amplitude, duration, start_time,
+                             period, type: "SignalType",
+                             coefficient, sample_rate=100):
+
+    sample_amount = int(duration * sample_rate)
     signal = []
-    sample_amount = int(round(duration * sample_rate, 0))
-    match type:
-        case SignalType.UNIFORM_NOISE:
-            for i in range(sample_amount):
-                signal.append(random.uniform(-amplitude, amplitude))
-        case SignalType.GAUSSIAN_NOISE:
-            for i in range(sample_amount):
-                signal.append(random.gauss() * amplitude)
-        case SignalType.SINE:
-            for i in range(sample_amount):
-                signal.append(amplitude * math.sin((2 * math.pi / period) * (i - start_time)))
-        case SignalType.HALF_WAVE_RECT_SINE:
-            for i in range(sample_amount):
-                signal.append(0.5 * amplitude * (math.sin((2 * math.pi / period) * (i - start_time))
-                                                 + math.sin((2 * math.pi / period) * (i - start_time))))
-        case SignalType.FULL_WAVE_RECT_SINE:
-            for i in range(sample_amount):
-                signal.append(amplitude * abs(math.sin((2 * math.pi / period) * (i - start_time))))
-        case SignalType.RECT:
-            for i in range(sample_amount):
-                t = i / sample_rate
-                local_t = (t - start_time) % period
 
-                if 0 <= local_t < add_coefficient * period:
-                    signal.append(amplitude)
-                elif add_coefficient * period <= local_t < period:
-                    signal.append(0)
-        case SignalType.RECT_SYMMETRIC:
-            for i in range(sample_amount):
-                t = i / sample_rate
-                local_t = (t - start_time) % period
+    for i in range(sample_amount):
+        t = start_time + i / sample_rate
 
-                if 0 <= local_t < add_coefficient * period:
-                    signal.append(amplitude)
-                elif add_coefficient * period <= local_t < period:
-                    signal.append(-amplitude)
-        case SignalType.TRIANGULAR:
-            for i in range(sample_amount):
-                t = i / sample_rate
-                local_t = (t - start_time) % period
+        match type:
+            case SignalType.DIRAC_DELTA:
+                signal.append(amplitude if abs(t - coefficient) < 1 / sample_rate else 0)
 
-                if 0 <= local_t < add_coefficient * period:
-                    signal.append((amplitude / (add_coefficient * period)) * local_t)
-                elif add_coefficient * period <= local_t < period:
-                    signal.append((-amplitude / ((1 - add_coefficient) * period) ) * local_t + amplitude / (1 - add_coefficient))
-        case SignalType.HEAVISIDE_STEP:
-            for i in range(sample_amount):
-                t = i / sample_rate
-                if t < add_coefficient:
-                    signal.append(0)
-                elif t == add_coefficient:
-                    signal.append(amplitude / 2)
-                else:
-                    signal.append(amplitude)
+            case SignalType.IMPULSE_NOISE:
+                signal.append(amplitude if random.random() < coefficient else 0)
 
-    return Signal(signal, amplitude, duration, start_time, period)
+    return Signal(signal, amplitude, duration, start_time, period, sample_rate)
 
-def generate_discrete_signal(amplitude: float, duration: float, start_time: float, period: float, type: "SignalType", coefficient, sample_rate = 100):
-    sample_amount = int(round(duration * sample_rate, 0))
-    signal = []
-    match type:
-        case SignalType.DIRAC_DELTA:
-            for i in range(sample_amount):
-                if i == coefficient:
-                    signal.append(amplitude)
-                else:
-                    signal.append(0)
-        case SignalType.IMPULSE_NOISE:
-            for i in range(sample_amount):
-                if random.random() < coefficient:
-                    signal.append(amplitude)
-                else:
-                    signal.append(0)
 
-    return Signal(signal, amplitude, duration, start_time, period)
-
-# typedef
 class SignalType(Enum):
-    # continuous
     UNIFORM_NOISE = 0
     GAUSSIAN_NOISE = 1
     SINE = 2
@@ -211,6 +197,5 @@ class SignalType(Enum):
     RECT_SYMMETRIC = 6
     TRIANGULAR = 7
     HEAVISIDE_STEP = 8
-    # discrete
     DIRAC_DELTA = 9
     IMPULSE_NOISE = 10
