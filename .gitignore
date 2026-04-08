@@ -2,3 +2,5 @@ __pycache__
 *.txt
 *.bin
 *.png
+bins
+pngs
