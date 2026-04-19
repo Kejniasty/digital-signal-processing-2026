@@ -106,6 +106,10 @@ class Signal:
             self.start_time + i / self.sample_rate
             for i in range(len(self.signal))
         ]
+        
+    def discretize(self):
+        return
+
 
 
 def generate_continuous_signal(amplitude, duration, start_time,
