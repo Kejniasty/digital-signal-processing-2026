@@ -1,5 +1,6 @@
 import math
 import random
+import numpy as np
 from enum import Enum
 
 
@@ -254,7 +255,7 @@ class Signal:
         kernel_signal = []
         for i in range(-half, half):
             t = i / target_sample_rate
-            kernel_signal.append(math.sinc(t * self.sample_rate))  # math.sinc is normalized
+            kernel_signal.append(np.sinc(t * self.sample_rate))  # math.sinc is normalized
 
         # Normalize so the kernel sums to 1
         total = sum(kernel_signal)
