@@ -107,8 +107,173 @@ class Signal:
             for i in range(len(self.signal))
         ]
         
-    def discretize(self):
-        return
+    def sample(self, sample_rate: int):
+        """
+        Sample signal by returning a signal with a smaller sample rate.
+        Returns new Signal object.
+        """
+        if sample_rate > self.sample_rate:
+            raise ValueError("New sample rate cannot be higher than the original sample rate")
+        if self.sample_rate % sample_rate != 0:
+            raise ValueError("New sample rate must be an integer divisor of the original sample rate")
+
+        step = self.sample_rate // sample_rate
+        new_signal = self.signal[::step] #slice with a given stride of step
+
+        return Signal(new_signal, self.amplitude, self.duration,
+                      self.start_time, self.period, sample_rate)
+
+    def quantize_mid_tread(self, levels: int):
+        """
+        Quantize signal using mid-tread uniform quantization.
+        'levels' should be an odd number to keep symmetry around zero.
+        Returns new Signal object.
+        """
+        if levels < 1:
+            raise ValueError("Number of levels must be at least 1")
+
+        step = (2 * self.amplitude) / levels  # quantization step size
+
+        new_signal = []
+        for x in self.signal:
+            # Shift into level index space, round to nearest integer, shift back
+            level = math.floor(x / step + 0.5)
+            # Clamp to valid range
+            max_level = (levels - 1) // 2
+            level = max(-max_level, min(max_level, level))
+            new_signal.append(level * step)
+
+        return Signal(new_signal, self.amplitude, self.duration,
+                      self.start_time, self.period, self.sample_rate)
+
+    def quantize_mid_rise(self, levels: int):
+        """
+        Quantize signal using mid-rise uniform quantization.
+        'levels' should be an even number to keep symmetry around zero.
+        Returns new Signal object.
+        """
+        if levels < 1:
+            raise ValueError("Number of levels must be at least 1")
+
+        step = (2 * self.amplitude) / levels
+
+        new_signal = []
+        for x in self.signal:
+            # Floor into step index, then shift to center of that step
+            level = math.floor(x / step)
+            # Clamp to valid range
+            max_level = levels // 2
+            level = max(-max_level, min(max_level - 1, level))
+            new_signal.append((level + 0.5) * step)
+
+        new_signal = []
+        for x in self.signal:
+            level = math.floor(x / step)
+            max_level = levels // 2
+            level = max(-max_level, min(max_level - 1, level))
+            new_signal.append((level + 0.5) * step)
+
+        return Signal(new_signal, self.amplitude, self.duration,
+                      self.start_time, self.period, self.sample_rate)
+
+    def convolve(self, other: "Signal"):
+        if self.sample_rate != other.sample_rate:
+            raise ValueError("Sample rate mismatch")
+
+        n = len(self.signal)
+        m = len(other.signal)
+        output_len = n + m - 1
+        result = [0.0] * output_len
+
+        for i in range(n):
+            for j in range(m):
+                result[i + j] += self.signal[i] * other.signal[j]
+
+        new_duration = self.duration + other.duration
+        new_amplitude = max(abs(x) for x in result)
+
+        return Signal(result, new_amplitude, new_duration,
+                      self.start_time, self.period, self.sample_rate)
+
+    def reconstruct_zoh(self, target_sample_rate: int):
+        """
+        Zero-Order Hold reconstruction for a given target sample rate.
+        Returns new Signal object.
+        """
+        factor = target_sample_rate // self.sample_rate
+
+        # ZOH kernel: a flat pulse of length=factor, normalized
+        kernel_signal = [1.0] * factor
+        kernel = Signal(kernel_signal, 1.0, factor / target_sample_rate,
+                        0.0, 0.0, target_sample_rate)
+
+        # Upsample: insert (factor-1) zeros between each sample
+        upsampled = []
+        for s in self.signal:
+            upsampled.append(s)
+            upsampled.extend([0.0] * (factor - 1))
+
+        upsampled_sig = Signal(upsampled, self.amplitude, self.duration,
+                               self.start_time, self.period, target_sample_rate)
+
+        return upsampled_sig.convolve(kernel)
+
+    def reconstruct_foh(self, target_sample_rate: int):
+        """
+        First-Order Hold reconstruction for a given target sample rate.
+        Returns new Signal object.
+        """
+        factor = target_sample_rate // self.sample_rate
+
+        # FOH kernel: triangle of length = 2*factor - 1
+        kernel_signal = []
+        for i in range(factor):
+            kernel_signal.append(i / factor)  # rising slope
+        for i in range(factor - 1, 0, -1):
+            kernel_signal.append(i / factor)  # falling slope
+
+        kernel = Signal(kernel_signal, 1.0, len(kernel_signal) / target_sample_rate,
+                        0.0, 0.0, target_sample_rate)
+
+        # Upsample: insert (factor-1) zeros between each sample
+        upsampled = []
+        for s in self.signal:
+            upsampled.append(s)
+            upsampled.extend([0.0] * (factor - 1))
+
+        upsampled_sig = Signal(upsampled, self.amplitude, self.duration,
+                               self.start_time, self.period, target_sample_rate)
+
+        return upsampled_sig.convolve(kernel)
+
+    def reconstruct_sinc(self, target_sample_rate: int, kernel_size: int = 64):
+        factor = target_sample_rate // self.sample_rate
+
+        # Build sinc kernel centered at zero, windowed to kernel_size samples
+        half = kernel_size // 2
+        kernel_signal = []
+        for i in range(-half, half):
+            t = i / target_sample_rate
+            kernel_signal.append(math.sinc(t * self.sample_rate))  # math.sinc is normalized
+
+        # Normalize so the kernel sums to 1
+        total = sum(kernel_signal)
+        kernel_signal = [x / total for x in kernel_signal]
+
+        kernel = Signal(kernel_signal, max(abs(x) for x in kernel_signal),
+                        len(kernel_signal) / target_sample_rate,
+                        0.0, 0.0, target_sample_rate)
+
+        # Upsample: insert (factor-1) zeros between each sample
+        upsampled = []
+        for s in self.signal:
+            upsampled.append(s)
+            upsampled.extend([0.0] * (factor - 1))
+
+        upsampled_sig = Signal(upsampled, self.amplitude, self.duration,
+                               self.start_time, self.period, target_sample_rate)
+
+        return upsampled_sig.convolve(kernel)
 
 
 
@@ -190,6 +355,36 @@ def generate_discrete_signal(amplitude, duration, start_time,
 
     return Signal(signal, amplitude, duration, start_time, period, sample_rate)
 
+def mse(original: Signal, quantized: Signal):
+    """Mean Squared Error"""
+    s1, s2, _ = original.pad(quantized)
+    n = len(s1)
+    return sum((a - b) ** 2 for a, b in zip(s1, s2)) / n
+
+
+def snr(original: Signal, quantized: Signal):
+    """Signal-to-Noise Ratio (dB)"""
+    s1, s2, _ = original.pad(quantized)
+    signal_power = sum(a ** 2 for a in s1)
+    noise_power = sum((a - b) ** 2 for a, b in zip(s1, s2))
+    if noise_power == 0:
+        return float('inf')
+    return 10 * math.log10(signal_power / noise_power)
+
+
+def psnr(original: Signal, quantized: Signal):
+    """Peak Signal-to-Noise Ratio (dB)"""
+    error = mse(original, quantized)
+    if error == 0:
+        return float('inf')
+    peak = max(abs(x) for x in original.signal)
+    return 10 * math.log10(peak ** 2 / error)
+
+
+def md(original: Signal, quantized: Signal):
+    """Maximum Difference"""
+    s1, s2, _ = original.pad(quantized)
+    return max(abs(a - b) for a, b in zip(s1, s2))
 
 class SignalType(Enum):
     UNIFORM_NOISE = 0

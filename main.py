@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
 
         period = 1 / freq if freq != 0 else 1
 
-        # --- DISCRET SIGNALS ---
+        # --- DISCRETE SIGNALS ---
         if sig_type in (SignalType.DIRAC_DELTA, SignalType.IMPULSE_NOISE):
             self.signal = generate_discrete_signal(
                 amplitude=amp,
@@ -120,7 +120,7 @@ class MainWindow(QMainWindow):
                 sample_rate=sample_rate
             )
 
-        # --- CONTINOUS SIGNALS ---
+        # --- CONTINUOUS SIGNALS ---
         else:
             self.signal = generate_continuous_signal(
                 amplitude=amp,
