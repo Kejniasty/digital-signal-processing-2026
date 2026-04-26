@@ -35,6 +35,8 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
         layout.addWidget(self.canvas)
         self.ui.plots.setLayout(layout)
+        self.showing_histogram = False
+
 
         # Connect UI elements
         self.ui.GenerateSignal.clicked.connect(self.generate_signal)
@@ -104,7 +106,6 @@ class MainWindow(QMainWindow):
         self.ui.binLabel.setText(f"bins: {snapped}")
 
     def generate_signal(self):
-        self.original_signal = self.signal
         amp = self.ui.amplitude.value()
         freq = self.ui.frequency.value()
         dur = self.ui.duration.value()
@@ -140,11 +141,16 @@ class MainWindow(QMainWindow):
                 coefficient=coefficient,
                 sample_rate=sample_rate
             )
-
+        self.original_signal = self.signal
         self.plot_signal()
 
     def plot_signal(self):
         if self.signal is None:
+            return
+
+        if hasattr(self.signal, "is_aliasing") and self.signal.is_aliasing:
+            plot.generate_plot(self.canvas.ax, self.signal)
+            self.canvas.draw()
             return
 
         sig_type = list(SignalType)[self.ui.typeDropdown.currentIndex()]
@@ -161,9 +167,38 @@ class MainWindow(QMainWindow):
         if self.signal is None:
             return
 
-        bins = self.ui.bins.value()
-        plot.plot_histogram(self.canvas.ax, self.signal, bins=bins)
+        sig_type = list(SignalType)[self.ui.typeDropdown.currentIndex()]
+       
+        if self.showing_histogram:
+            self.ui.ShowHistogram.setText("Show histogram")
+        else:
+            self.ui.ShowHistogram.setText("Show signal")
+
+        # if hist go back to plot
+        if self.showing_histogram:
+            self.canvas.ax.clear()
+
+            # chart type choose
+            if sig_type in (SignalType.DIRAC_DELTA, SignalType.IMPULSE_NOISE):
+                plot.generate_discrete_plot(self.canvas.ax, self.signal)
+            else:
+                plot.generate_plot(self.canvas.ax, self.signal)
+
+            self.canvas.draw()
+            self.showing_histogram = False
+            return
+
+        # if plot show hist
+        plot.plot_histogram(
+            self.canvas.ax,
+            self.signal,
+            bins=self.ui.bins.value(),
+            title="Signal histogram"
+        )
+
         self.canvas.draw()
+        self.showing_histogram = True
+
 
     def save_signal(self):
         if self.signal is None:
@@ -271,6 +306,15 @@ class MainWindow(QMainWindow):
 
         new_sr = self.ui.sampleRate.value()
 
+        if new_sr == self.signal.sample_rate:
+            print("Sampling skipped: new sample rate equals original sample rate.")
+            return
+
+
+        if new_sr > self.signal.sample_rate:
+            print("Cannot sample to a higher sample rate — use reconstruction instead.")
+            return
+
         try:
             self.signal = self.signal.sample(new_sr)
         except Exception as e:
@@ -312,18 +356,22 @@ class MainWindow(QMainWindow):
     def op_metrics(self):
         if self.signal is None:
             return
-        if not hasattr(self, "original_signal"):
+        if not hasattr(self, "original_signal") or self.original_signal is None:
             print("No original signal stored.")
             return
 
         orig = self.original_signal
         proc = self.signal
 
+        if self.original_signal is None:
+            print("No original signal stored.")
+            return
+
         self.ui.mseLabel.setText(f"MSE: {mse(orig, proc):.6f}")
         self.ui.snrLabel.setText(f"SNR: {snr(orig, proc):.2f} dB")
         self.ui.psnrLabel.setText(f"PSNR: {psnr(orig, proc):.2f} dB")
         self.ui.mdLabel.setText(f"MD: {md(orig, proc):.6f}")
-        
+
     def op_aliasing(self):
         fo = self.ui.foInput.value()
         fs = self.ui.fsInput.value()
@@ -334,38 +382,41 @@ class MainWindow(QMainWindow):
             return
 
         duration = 1.0
-        start = 0.0
+        fa = fo + fs
+        CONT_SR = max(50000, 10 * fa)
+
+        # czas ciągły
+        t = np.arange(0, duration, 1/CONT_SR)
 
         # sygnał użyteczny
-        useful = generate_continuous_signal(
-            amplitude=1.0,
-            duration=duration,
-            start_time=start,
-            period=1/fo,
-            type=SignalType.SINE,
-            coefficient=0,
-            sample_rate=10_000
-        )
+        useful = np.sin(2 * np.pi * fo * t)
 
-        # sygnał zakłócający fa = fo + fs
-        fa = fo + fs
-        interfer = generate_continuous_signal(
-            amplitude=amp_interf,
-            duration=duration,
-            start_time=start,
-            period=1/fa,
-            type=SignalType.SINE,
-            coefficient=0,
-            sample_rate=10_000
-        )
+        # sygnał zakłócający
+        interfer = amp_interf * np.sin(2 * np.pi * fa * t)
 
+        # suma
         combined = useful + interfer
 
-        # próbkowanie
-        sampled = combined.sample(fs)
+        # sampling
+        t_new = np.arange(0, duration, 1/fs)
+        x_new = np.interp(t_new, t, combined)
+
+        # 🔥 POPRAWNE utworzenie obiektu Signal
+        sampled = Signal(
+            signal=x_new.tolist(),
+            amplitude=max(abs(x) for x in x_new),
+            duration=duration,
+            start_time=0.0,
+            period=1.0,
+            sample_rate=fs
+        )
+
+        sampled.is_aliasing = True
 
         self.signal = sampled
+        self.original_signal = sampled
         self.plot_signal()
+
 
 
 
