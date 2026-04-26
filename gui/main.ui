@@ -310,6 +310,20 @@
              </widget>
             </item>
             <item>
+             <widget class="QLabel" name="label_6">
+              <property name="text">
+               <string>Kernel size</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="kernelSize">
+              <property name="maximum">
+               <number>2147483647</number>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QPushButton" name="metrics">
               <property name="text">
                <string>Compute metrics</string>

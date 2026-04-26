@@ -343,13 +343,14 @@ class MainWindow(QMainWindow):
 
         target_sr = self.ui.sampleRate.value()
         method = self.ui.reconMethod.currentText()
+        kernelSize = self.ui.kernelSize.value()
 
         if method == "ZOH":
             self.signal = self.signal.reconstruct_zoh(target_sr)
         elif method == "FOH":
             self.signal = self.signal.reconstruct_foh(target_sr)
         else:
-            self.signal = self.signal.reconstruct_sinc(target_sr)
+            self.signal = self.signal.reconstruct_sinc(target_sr,kernelSize)
 
         self.plot_signal()
 
