@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QFileDialog
 import plot
 from dsp_signal import *
 from file_operations import *
-from mpl_canvas import MplCanvas   # dodasz ten plik
+from mpl_canvas import MplCanvas
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -47,6 +47,11 @@ class MainWindow(QMainWindow):
         self.ui.subBtn.clicked.connect(self.op_sub)
         self.ui.multBtn.clicked.connect(self.op_mul)
         self.ui.divBtn.clicked.connect(self.op_div)
+        self.ui.sampleSignal.clicked.connect(self.op_sample)
+        self.ui.quantize.clicked.connect(self.op_quantize)
+        self.ui.reconstruct.clicked.connect(self.op_reconstruct)
+        self.ui.metrics.clicked.connect(self.op_metrics)
+        self.ui.aliasing.clicked.connect(self.op_aliasing)
 
 
         self.signal = None  # placeholder
@@ -73,7 +78,9 @@ class MainWindow(QMainWindow):
             SignalType.DIRAC_DELTA,
             SignalType.IMPULSE_NOISE
         }
+    # --- BUTTON HOOKUPS ---
 
+    # oveall button functionality section
     def savePlot(self):
         if self.signal is None:
             return
@@ -97,12 +104,14 @@ class MainWindow(QMainWindow):
         self.ui.binLabel.setText(f"bins: {snapped}")
 
     def generate_signal(self):
+        self.original_signal = self.signal
         amp = self.ui.amplitude.value()
         freq = self.ui.frequency.value()
         dur = self.ui.duration.value()
         start_time = self.ui.startTime.value()
         coefficient = self.ui.coeff.value()
         sample_rate = self.ui.sampleRate.value()
+        
 
         sig_type = list(SignalType)[self.ui.typeDropdown.currentIndex()]
 
@@ -219,7 +228,7 @@ class MainWindow(QMainWindow):
 
         return self.loaded_signals[full1], self.loaded_signals[full2]
 
-
+    # specific button section
     def op_add(self):
         sig1, sig2 = self.get_selected_signals()
         if sig1 is None:
@@ -255,6 +264,109 @@ class MainWindow(QMainWindow):
         result = sig1 / sig2
         self.signal = result
         self.plot_signal()
+        
+    def op_sample(self):
+        if self.signal is None:
+            return
+
+        new_sr = self.ui.sampleRate.value()
+
+        try:
+            self.signal = self.signal.sample(new_sr)
+        except Exception as e:
+            print("Sampling error:", e)
+            return
+
+        self.plot_signal()
+
+    def op_quantize(self):
+        if self.signal is None:
+            return
+
+        levels = self.ui.quantLevels.value()
+        method = self.ui.quantMethod.currentText()
+
+        if method == "Mid-tread (round)":
+            self.signal = self.signal.quantize_mid_tread(levels)
+        else:
+            self.signal = self.signal.quantize_mid_rise(levels)
+
+        self.plot_signal()
+
+    def op_reconstruct(self):
+        if self.signal is None:
+            return
+
+        target_sr = self.ui.sampleRate.value()
+        method = self.ui.reconMethod.currentText()
+
+        if method == "ZOH":
+            self.signal = self.signal.reconstruct_zoh(target_sr)
+        elif method == "FOH":
+            self.signal = self.signal.reconstruct_foh(target_sr)
+        else:
+            self.signal = self.signal.reconstruct_sinc(target_sr)
+
+        self.plot_signal()
+
+    def op_metrics(self):
+        if self.signal is None:
+            return
+        if not hasattr(self, "original_signal"):
+            print("No original signal stored.")
+            return
+
+        orig = self.original_signal
+        proc = self.signal
+
+        self.ui.mseLabel.setText(f"MSE: {mse(orig, proc):.6f}")
+        self.ui.snrLabel.setText(f"SNR: {snr(orig, proc):.2f} dB")
+        self.ui.psnrLabel.setText(f"PSNR: {psnr(orig, proc):.2f} dB")
+        self.ui.mdLabel.setText(f"MD: {md(orig, proc):.6f}")
+        
+    def op_aliasing(self):
+        fo = self.ui.foInput.value()
+        fs = self.ui.fsInput.value()
+        amp_interf = self.ui.ampInterfInput.value()
+
+        if fo <= 0 or fs <= 0:
+            print("Invalid fo or fs")
+            return
+
+        duration = 1.0
+        start = 0.0
+
+        # sygnał użyteczny
+        useful = generate_continuous_signal(
+            amplitude=1.0,
+            duration=duration,
+            start_time=start,
+            period=1/fo,
+            type=SignalType.SINE,
+            coefficient=0,
+            sample_rate=10_000
+        )
+
+        # sygnał zakłócający fa = fo + fs
+        fa = fo + fs
+        interfer = generate_continuous_signal(
+            amplitude=amp_interf,
+            duration=duration,
+            start_time=start,
+            period=1/fa,
+            type=SignalType.SINE,
+            coefficient=0,
+            sample_rate=10_000
+        )
+
+        combined = useful + interfer
+
+        # próbkowanie
+        sampled = combined.sample(fs)
+
+        self.signal = sampled
+        self.plot_signal()
+
 
 
 if __name__ == "__main__":
