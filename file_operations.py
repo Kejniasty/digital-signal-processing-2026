@@ -14,6 +14,7 @@ def signal_to_file(signal: Signal, filename: str, signal_type_name: str):
         f.write(struct.pack("d", signal.duration))
         f.write(struct.pack("d", signal.amplitude))
         f.write(struct.pack("d", signal.period))
+        f.write(struct.pack("d", signal.is_sampled))
 
         # Signal type as UTF-8 string (length + bytes)
         encoded = signal_type_name.encode("utf-8")
@@ -38,6 +39,7 @@ def signal_from_file(filename: str):
         duration = struct.unpack("d", f.read(8))[0]
         amplitude = struct.unpack("d", f.read(8))[0]
         period = struct.unpack("d", f.read(8))[0]
+        is_sampled = struct.unpack("d", f.read(8))[0]
 
         # Signal type (UTF-8 string)
         name_len = struct.unpack("I", f.read(4))[0]
@@ -55,7 +57,8 @@ def signal_from_file(filename: str):
         duration=duration,
         start_time=start_time,
         period=period,
-        sample_rate=int(sample_rate)
+        sample_rate=int(sample_rate),
+        is_sampled=is_sampled,
     )
 
     return signal, type_name

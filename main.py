@@ -156,7 +156,7 @@ class MainWindow(QMainWindow):
         sig_type = list(SignalType)[self.ui.typeDropdown.currentIndex()]
         is_discrete = sig_type in self.discrete_types
 
-        if is_discrete:
+        if is_discrete or self.signal.is_sampled:
             plot.generate_discrete_plot(self.canvas.ax, self.signal)
         else:
             plot.generate_plot(self.canvas.ax, self.signal)

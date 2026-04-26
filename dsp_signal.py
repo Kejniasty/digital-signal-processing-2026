@@ -8,13 +8,14 @@ class Signal:
     """Represents a continuous or discrete signal."""
 
     def __init__(self, signal=None, amplitude=0.0, duration=0.0,
-                 start_time=0.0, period=0.0, sample_rate=100):
+                 start_time=0.0, period=0.0, sample_rate=100, is_sampled=False):
         self.signal = signal.copy() if signal is not None else []
         self.amplitude = amplitude
         self.duration = duration
         self.start_time = start_time
         self.period = period
         self.sample_rate = sample_rate
+        self.is_sampled = is_sampled
 
         # Generate time axis
         self.time = [
@@ -122,7 +123,7 @@ class Signal:
         new_signal = self.signal[::step] #slice with a given stride of step
 
         return Signal(new_signal, self.amplitude, self.duration,
-                      self.start_time, self.period, sample_rate)
+                      self.start_time, self.period, sample_rate, True)
 
     def quantize_mid_tread(self, levels: int):
         """
@@ -167,13 +168,6 @@ class Signal:
             level = max(-max_level, min(max_level - 1, level))
             new_signal.append((level + 0.5) * step)
 
-        new_signal = []
-        for x in self.signal:
-            level = math.floor(x / step)
-            max_level = levels // 2
-            level = max(-max_level, min(max_level - 1, level))
-            new_signal.append((level + 0.5) * step)
-
         return Signal(new_signal, self.amplitude, self.duration,
                       self.start_time, self.period, self.sample_rate)
 
@@ -198,68 +192,44 @@ class Signal:
 
     def reconstruct_zoh(self, target_sample_rate: int):
         """
-        Zero-Order Hold reconstruction for a given target sample rate.
+        Zero-order hold reconstruction for the signal. Direct interpolation method.
         Returns new Signal object.
         """
         factor = target_sample_rate // self.sample_rate
-
-        # ZOH kernel: a flat pulse of length=factor, normalized
-        kernel_signal = [1.0] * factor
-        kernel = Signal(kernel_signal, 1.0, factor / target_sample_rate,
-                        0.0, 0.0, target_sample_rate)
-
-        # Upsample: insert (factor-1) zeros between each sample
         upsampled = []
         for s in self.signal:
-            upsampled.append(s)
-            upsampled.extend([0.0] * (factor - 1))
-
-        upsampled_sig = Signal(upsampled, self.amplitude, self.duration,
-                               self.start_time, self.period, target_sample_rate)
-
-        return upsampled_sig.convolve(kernel)
+            upsampled.extend([s] * factor)  # repeat each sample 'factor' times
+        return Signal(upsampled, self.amplitude, self.duration,
+                      self.start_time, self.period, target_sample_rate)
 
     def reconstruct_foh(self, target_sample_rate: int):
         """
-        First-Order Hold reconstruction for a given target sample rate.
+        First-order hold reconstruction for the signal. Direct interpolation method.
         Returns new Signal object.
         """
         factor = target_sample_rate // self.sample_rate
-
-        # FOH kernel: triangle of length = 2*factor - 1
-        kernel_signal = []
-        for i in range(factor):
-            kernel_signal.append(i / factor)  # rising slope
-        for i in range(factor - 1, 0, -1):
-            kernel_signal.append(i / factor)  # falling slope
-
-        kernel = Signal(kernel_signal, 1.0, len(kernel_signal) / target_sample_rate,
-                        0.0, 0.0, target_sample_rate)
-
-        # Upsample: insert (factor-1) zeros between each sample
         upsampled = []
-        for s in self.signal:
-            upsampled.append(s)
-            upsampled.extend([0.0] * (factor - 1))
+        for i in range(len(self.signal)):
+            s0 = self.signal[i]
+            # For the last sample, extrapolate using the previous slope
+            if i + 1 < len(self.signal):
+                s1 = self.signal[i + 1]
+            else:
+                s1 = self.signal[-1] + (self.signal[-1] - self.signal[-2])
+            for j in range(factor):
+                upsampled.append(s0 + (s1 - s0) * j / factor)
+        return Signal(upsampled, self.amplitude, self.duration,
+                      self.start_time, self.period, target_sample_rate)
 
-        upsampled_sig = Signal(upsampled, self.amplitude, self.duration,
-                               self.start_time, self.period, target_sample_rate)
-
-        return upsampled_sig.convolve(kernel)
-
-    def reconstruct_sinc(self, target_sample_rate: int, kernel_size: int = 64):
+    def reconstruct_sinc(self, target_sample_rate: int, kernel_size: int = 512):
         factor = target_sample_rate // self.sample_rate
 
         # Build sinc kernel centered at zero, windowed to kernel_size samples
         half = kernel_size // 2
         kernel_signal = []
         for i in range(-half, half):
-            t = i / target_sample_rate
-            kernel_signal.append(np.sinc(t * self.sample_rate))  # math.sinc is normalized
-
-        # Normalize so the kernel sums to 1
-        total = sum(kernel_signal)
-        kernel_signal = [x / total for x in kernel_signal]
+            t = i / factor
+            kernel_signal.append(np.sinc(t))  # math.sinc is normalized
 
         kernel = Signal(kernel_signal, max(abs(x) for x in kernel_signal),
                         len(kernel_signal) / target_sample_rate,
@@ -274,7 +244,16 @@ class Signal:
         upsampled_sig = Signal(upsampled, self.amplitude, self.duration,
                                self.start_time, self.period, target_sample_rate)
 
-        return upsampled_sig.convolve(kernel)
+        convolved = upsampled_sig.convolve(kernel)
+
+        # trim the leading 'half' samples to realign the output with the original signal
+        # crop to the expected output length
+        expected_len = len(self.signal) * factor
+        trimmed = convolved.signal[half: half + expected_len]
+        new_amplitude = max(abs(x) for x in trimmed) if trimmed else 0.0
+
+        return Signal(trimmed, new_amplitude, self.duration,
+                      self.start_time, self.period, target_sample_rate)
 
 
 
