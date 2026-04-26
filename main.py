@@ -385,23 +385,20 @@ class MainWindow(QMainWindow):
         fa = fo + fs
         CONT_SR = max(50000, 10 * fa)
 
-        # czas ciągły
+        # continous time
         t = np.arange(0, duration, 1/CONT_SR)
 
-        # sygnał użyteczny
         useful = np.sin(2 * np.pi * fo * t)
 
-        # sygnał zakłócający
         interfer = amp_interf * np.sin(2 * np.pi * fa * t)
 
-        # suma
+        # sum
         combined = useful + interfer
 
         # sampling
         t_new = np.arange(0, duration, 1/fs)
         x_new = np.interp(t_new, t, combined)
 
-        # 🔥 POPRAWNE utworzenie obiektu Signal
         sampled = Signal(
             signal=x_new.tolist(),
             amplitude=max(abs(x) for x in x_new),
