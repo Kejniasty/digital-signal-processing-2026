@@ -248,7 +248,7 @@ class Signal:
 
         # trim the leading 'half' samples to realign the output with the original signal
         # crop to the expected output length
-        expected_len = len(self.signal) * factor
+        expected_len = (len(self.signal) - 1) * factor + 1
         trimmed = convolved.signal[half: half + expected_len]
         new_amplitude = max(abs(x) for x in trimmed) if trimmed else 0.0
 
