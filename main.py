@@ -331,7 +331,7 @@ class MainWindow(QMainWindow):
         method = self.ui.quantMethod.currentText()
 
         if method == "Mid-tread (round)":
-            self.signal = self.signal.quantize_mid_tread(levels)
+            self.signal = self.signal.quantize_trunc(levels)
         else:
             self.signal = self.signal.quantize_mid_rise(levels)
 

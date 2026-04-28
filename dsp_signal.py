@@ -125,24 +125,23 @@ class Signal:
         return Signal(new_signal, self.amplitude, self.duration,
                       self.start_time, self.period, sample_rate, True)
 
-    def quantize_mid_tread(self, levels: int):
+    def quantize_trunc(self, levels: int):
         """
-        Quantize signal using mid-tread uniform quantization.
+        Quantize signal using truncation uniform quantization.
         'levels' should be an odd number to keep symmetry around zero.
         Returns new Signal object.
         """
         if levels < 1:
             raise ValueError("Number of levels must be at least 1")
 
-        step = (2 * self.amplitude) / levels  # quantization step size
+        step = (2 * self.amplitude) / levels
 
         new_signal = []
         for x in self.signal:
-            # Shift into level index space, round to nearest integer, shift back
-            level = math.floor(x / step + 0.5)
-            # Clamp to valid range
-            max_level = (levels - 1) // 2
-            level = max(-max_level, min(max_level, level))
+            # math.trunc for truncating towards zero
+            level = math.trunc(x / step)
+            max_level = levels // 2
+            level = max(-max_level, min(max_level - 1, level))
             new_signal.append(level * step)
 
         return Signal(new_signal, self.amplitude, self.duration,
