@@ -208,15 +208,15 @@ class Signal:
         """
         factor = target_sample_rate // self.sample_rate
         upsampled = []
-        for i in range(len(self.signal)):
+
+        for i in range(len(self.signal) - 1):
             s0 = self.signal[i]
-            # For the last sample, extrapolate using the previous slope
-            if i + 1 < len(self.signal):
-                s1 = self.signal[i + 1]
-            else:
-                s1 = self.signal[-1] + (self.signal[-1] - self.signal[-2])
+            s1 = self.signal[i + 1]
             for j in range(factor):
                 upsampled.append(s0 + (s1 - s0) * j / factor)
+
+        upsampled.append(self.signal[-1])
+
         return Signal(upsampled, self.amplitude, self.duration,
                       self.start_time, self.period, target_sample_rate)
 
