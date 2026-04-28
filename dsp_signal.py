@@ -217,7 +217,9 @@ class Signal:
 
         upsampled.append(self.signal[-1])
 
-        return Signal(upsampled, self.amplitude, self.duration,
+        new_duration = (len(self.signal) - 1) / self.sample_rate
+
+        return Signal(upsampled, self.amplitude, new_duration,
                       self.start_time, self.period, target_sample_rate)
 
     def reconstruct_sinc(self, target_sample_rate: int, kernel_size: int = 512):
