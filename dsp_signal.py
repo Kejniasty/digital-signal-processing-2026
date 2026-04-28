@@ -253,7 +253,9 @@ class Signal:
         trimmed = convolved.signal[half: half + expected_len]
         new_amplitude = max(abs(x) for x in trimmed) if trimmed else 0.0
 
-        return Signal(trimmed, new_amplitude, self.duration,
+        new_duration = (len(self.signal) - 1) / self.sample_rate
+
+        return Signal(trimmed, new_amplitude, new_duration,
                       self.start_time, self.period, target_sample_rate)
 
 
