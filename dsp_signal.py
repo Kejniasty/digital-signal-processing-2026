@@ -223,6 +223,9 @@ class Signal:
                       self.start_time, self.period, target_sample_rate)
 
     def reconstruct_sinc(self, target_sample_rate: int, kernel_size: int = 512):
+        if kernel_size < 0:
+            raise ValueError("Kernel size must be bigger than 0!")
+
         factor = target_sample_rate // self.sample_rate
 
         # Build sinc kernel centered at zero, windowed to kernel_size samples
