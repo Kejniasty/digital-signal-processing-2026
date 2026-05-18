@@ -141,3 +141,9 @@ def _demo_distance_sensor():
         mean_err = sum(abs(d - e) for _, d, e in valid) / len(valid)
         print(f"\nŚredni błąd odległości (po t>0.2s): {mean_err:.2f} m")
     print()
+
+if __name__ == "__main__":
+    _demo_convolution()
+    _demo_filters()
+    _demo_correlation()
+    _demo_distance_sensor()
