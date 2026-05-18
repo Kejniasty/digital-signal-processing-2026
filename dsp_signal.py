@@ -262,6 +262,9 @@ class Signal:
                       self.start_time, self.period, target_sample_rate)
 
 
+#------------------
+# Signal Generation
+#------------------
 
 def generate_continuous_signal(amplitude, duration, start_time,
                                period, type: "SignalType",
@@ -341,6 +344,158 @@ def generate_discrete_signal(amplitude, duration, start_time,
 
     return Signal(signal, amplitude, duration, start_time, period, sample_rate)
 
+def _window(n: int, M: int, wtype: WindowType) -> float:
+    """Return w(n) for a given window of length M (n = 0..M-1)."""
+    match wtype:
+        case WindowType.RECTANGULAR:
+            return 1.0
+        case WindowType.HAMMING:            # eq. (5)
+            return 0.53836 - 0.46164 * math.cos(2 * math.pi * n / M)
+        case WindowType.HANNING:            # eq. (6)
+            return 0.5 - 0.5 * math.cos(2 * math.pi * n / M)
+        case WindowType.BLACKMAN:           # eq. (7)
+            return (0.42
+                    - 0.5  * math.cos(2 * math.pi * n / M)
+                    + 0.08 * math.cos(4 * math.pi * n / M))
+
+#--------
+# Filters
+#--------
+
+def design_lowpass_fir(M: int, K: int,
+                       window: WindowType = "rectangular") -> list[float]:
+    """
+    Design a lowpass FIR filter using the window method.
+
+    Parameters
+    M : int   – number of coefficients (should be odd)
+    K : int   – frequency divider; cutoff frequency fo = fp / K
+    window    – window function to apply
+
+    Returns
+    list[float] of length M  (h[0] … h[M-1])
+    """
+    if M % 2 == 0:
+        raise ValueError("M should be odd for a symmetric FIR filter")
+    centre = (M - 1) / 2
+    h = []
+    for n in range(M):
+        shift = n - centre
+        if shift == 0:
+            h_n = 2.0 / K
+        else:
+            h_n = math.sin(2 * math.pi * shift / K) / (math.pi * shift)
+        h_n *= _window(n, M, window)
+        h.append(h_n)
+    return h
+
+
+def design_fir(M: int, K: int,
+               window: WindowType = "rectangular",
+               ftype: FilterType = "lowpass") -> list[float]:
+    """
+    Design a FIR filter of any supported type.
+
+    Bandpass  (F1): multiply lowpass coefficients by s(n) = 2·sin(πn/2)
+    Highpass  (F2): multiply lowpass coefficients by s(n) = (-1)^n
+    """
+    h = design_lowpass_fir(M, K, window)
+
+    match ftype:
+        case FilterType.LOWPASS:
+            return h
+        case FilterType.BANDPASS:  # eq. from sec. 7 of spec
+            return [h[n] * 2 * math.sin(math.pi * n / 2) for n in range(M)]
+        case FilterType.HIGHPASS:
+            return [h[n] * ((-1) ** n) for n in range(M)]
+
+
+def make_filter_signal(coefficients: list[float], sample_rate: int) -> Signal:
+    """Wrap a coefficient list into a Signal object suitable for convolution."""
+    amp = max(abs(x) for x in coefficients) if coefficients else 0.0
+    dur = len(coefficients) / sample_rate
+    return Signal(coefficients, amp, dur, 0.0, 0.0, sample_rate)
+
+
+def filter_signal(x: Signal, M: int, K: int,
+                  window: WindowType = "rectangular",
+                  ftype: FilterType = "lowpass") -> Signal:
+    """
+    Filter signal x with an M-tap FIR filter designed for sample_rate=x.sample_rate.
+    Returns the convolved (filtered) signal.
+    """
+    coeffs = design_fir(M, K, window, ftype)
+    h_sig = make_filter_signal(coeffs, x.sample_rate)
+    return x.convolve(h_sig)
+
+#------------------
+# Cross-correlation
+#------------------
+
+def cross_correlate_direct(h: Signal, x: Signal) -> Signal:
+    """
+    Cross-correlation via the direct formula.
+
+    The output vector is re-indexed so that index 0 of the returned
+    Signal corresponds to R_hx(-(N-1))  (leftmost output sample).
+    Output length = M + N - 1.
+    """
+    if h.sample_rate != x.sample_rate:
+        raise ValueError("Sample rate mismatch")
+
+    M = len(h.signal)
+    N = len(x.signal)
+    out_len = M + N - 1
+    result = [0.0] * out_len
+
+    # n ranges over -(N-1) … M-1  →  stored at index n+(N-1)
+    for idx in range(out_len):
+        n = idx - (N - 1)
+        val = 0.0
+        for k in range(M):
+            x_idx = n - k  # index into x (possibly negative / out of range)
+            # x is zero outside [0, N-1]  (zero padding convention)
+            # BUT note: correlation slides x FORWARD (not reversed like convolution)
+            # R_hx(n) = Σ h(k)·x(k-n)  — re-check with eq. (8)/(9):
+            # eq.(9):  Σ_{k=0}^{M-1} h(k)·x(n-k)
+            # where x is zero outside [0,N-1]
+            if 0 <= x_idx < N:
+                val += h.signal[k] * x.signal[x_idx]
+        result[idx] = val
+
+    amp = max(abs(v) for v in result) if result else 0.0
+    dur = (M + N - 1) / h.sample_rate
+    # start_time shifted to represent negative-lag region
+    start = -(N - 1) / h.sample_rate
+    return Signal(result, amp, dur, start, 0.0, h.sample_rate)
+
+
+def cross_correlate_via_convolution(h: Signal, x: Signal) -> Signal:
+    """
+    Cross-correlation via convolution.
+
+    Equivalently (using the identity for finite sequences):
+        R_hx = conv(h_rev, x)   where h_rev(k) = h(M-1-k)
+    """
+    if h.sample_rate != x.sample_rate:
+        raise ValueError("Sample rate mismatch")
+
+    # Reverse h
+    h_rev = Signal(list(reversed(h.signal)),
+                   h.amplitude, h.duration, h.start_time, h.period, h.sample_rate)
+    conv_result = h_rev.convolve(x)
+
+    # Adjust start_time to match direct implementation (lag axis)
+    N = len(x.signal)
+    conv_result.start_time = -(N - 1) / h.sample_rate
+    conv_result.time = [conv_result.start_time + i / conv_result.sample_rate
+                        for i in range(len(conv_result.signal))]
+    return conv_result
+
+#--------
+# Metrics
+#--------
+
 def mse(original: Signal, quantized: Signal):
     """Mean Squared Error"""
     s1, s2, _ = original.pad(quantized)
@@ -372,6 +527,15 @@ def md(original: Signal, quantized: Signal):
     s1, s2, _ = original.pad(quantized)
     return max(abs(a - b) for a, b in zip(s1, s2))
 
+#--------------------------------
+# Correlation distance simulation
+#--------------------------------
+
+
+#------
+# Enums
+#------
+
 class SignalType(Enum):
     UNIFORM_NOISE = 0
     GAUSSIAN_NOISE = 1
@@ -384,3 +548,15 @@ class SignalType(Enum):
     HEAVISIDE_STEP = 8
     DIRAC_DELTA = 9
     IMPULSE_NOISE = 10
+
+class WindowType(Enum):
+    RECTANGULAR = "rectangular"
+    HAMMING = "hamming"  # O1
+    HANNING = "hanning"  # O2
+    BLACKMAN = "blackman"  # O3
+
+
+class FilterType(Enum):
+    LOWPASS = "lowpass"
+    BANDPASS = "bandpass"  # F1 – środkowoprzepustowy
+    HIGHPASS = "highpass"  # F2 – górnoprzepustowy
