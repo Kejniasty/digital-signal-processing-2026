@@ -453,7 +453,7 @@ def cross_correlate_direct(h: Signal, x: Signal) -> Signal:
         n = idx - (N - 1)
         val = 0.0
         for k in range(M):
-            x_idx = n - k  # index into x (possibly negative / out of range)
+            x_idx = k - n  # index into x (possibly negative / out of range)
             # x is zero outside [0, N-1]  (zero padding convention)
             # BUT note: correlation slides x FORWARD (not reversed like convolution)
             # R_hx(n) = Σ h(k)·x(k-n)  — re-check with eq. (8)/(9):
@@ -480,10 +480,10 @@ def cross_correlate_via_convolution(h: Signal, x: Signal) -> Signal:
     if h.sample_rate != x.sample_rate:
         raise ValueError("Sample rate mismatch")
 
-    # Reverse h
-    h_rev = Signal(list(reversed(h.signal)),
-                   h.amplitude, h.duration, h.start_time, h.period, h.sample_rate)
-    conv_result = h_rev.convolve(x)
+    # Reverse x
+    x_rev = Signal(list(reversed(x.signal)),
+                   x.amplitude, x.duration, x.start_time, x.period, x.sample_rate)
+    conv_result = h.convolve(x_rev)
 
     # Adjust start_time to match direct implementation (lag axis)
     N = len(x.signal)
@@ -526,11 +526,6 @@ def md(original: Signal, quantized: Signal):
     """Maximum Difference"""
     s1, s2, _ = original.pad(quantized)
     return max(abs(a - b) for a, b in zip(s1, s2))
-
-#--------------------------------
-# Correlation distance simulation
-#--------------------------------
-
 
 #------
 # Enums
