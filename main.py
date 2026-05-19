@@ -9,6 +9,7 @@ import plot
 from dsp_signal import *
 from file_operations import *
 from mpl_canvas import MplCanvas
+from correlation_distance_sim import DistanceSensor
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -54,6 +55,10 @@ class MainWindow(QMainWindow):
         self.ui.reconstruct.clicked.connect(self.op_reconstruct)
         self.ui.metrics.clicked.connect(self.op_metrics)
         self.ui.aliasing.clicked.connect(self.op_aliasing)
+        self.ui.convBtn.clicked.connect(self.op_convolve)
+        self.ui.corrBtn.clicked.connect(self.op_correlate)
+        self.ui.ApplyFirBtn.clicked.connect(self.op_apply_fir)
+        self.ui.RunSimBtn.clicked.connect(self.op_sensor_simulation)
 
 
         self.signal = None  # placeholder
@@ -148,18 +153,47 @@ class MainWindow(QMainWindow):
         if self.signal is None:
             return
 
-        if hasattr(self.signal, "is_aliasing") and self.signal.is_aliasing:
-            plot.generate_plot(self.canvas.ax, self.signal)
-            self.canvas.draw()
-            return
+        self.plot_single_signal(self.signal)
 
-        sig_type = list(SignalType)[self.ui.typeDropdown.currentIndex()]
-        is_discrete = sig_type in self.discrete_types
+    def plot_single_signal(self, signal, title="Signal"):
+        self.canvas.set_single_mode()
 
-        if is_discrete or self.signal.is_sampled:
-            plot.generate_discrete_plot(self.canvas.ax, self.signal)
-        else:
-            plot.generate_plot(self.canvas.ax, self.signal)
+        plot.plot_signal_auto(self.canvas.ax1, signal)
+        self.canvas.ax1.set_title(title)
+
+        self.canvas.draw()
+
+
+    def plot_double_signal(self, sig1, sig2,
+                           title1="Original",
+                           title2="Processed"):
+
+        self.canvas.set_double_mode()
+
+        plot.plot_signal_auto(self.canvas.ax1, sig1)
+        self.canvas.ax1.set_title(title1)
+
+        plot.plot_signal_auto(self.canvas.ax2, sig2)
+        self.canvas.ax2.set_title(title2)
+
+        self.canvas.draw()
+
+
+    def plot_operation_result(self, sig1, sig2, result,
+                              title1="Signal 1",
+                              title2="Signal 2",
+                              title3="Result"):
+
+        self.canvas.set_triple_mode()
+
+        plot.plot_signal_auto(self.canvas.ax1, sig1)
+        self.canvas.ax1.set_title(title1)
+
+        plot.plot_signal_auto(self.canvas.ax2, sig2)
+        self.canvas.ax2.set_title(title2)
+
+        plot.plot_signal_auto(self.canvas.ax3, result)
+        self.canvas.ax3.set_title(title3)
 
         self.canvas.draw()
 
@@ -168,29 +202,30 @@ class MainWindow(QMainWindow):
             return
 
         sig_type = list(SignalType)[self.ui.typeDropdown.currentIndex()]
-       
+
         if self.showing_histogram:
             self.ui.ShowHistogram.setText("Show histogram")
         else:
             self.ui.ShowHistogram.setText("Show signal")
 
-        # if hist go back to plot
+        # back to signal plot
         if self.showing_histogram:
-            self.canvas.ax.clear()
+            self.canvas.set_single_mode()
 
-            # chart type choose
             if sig_type in (SignalType.DIRAC_DELTA, SignalType.IMPULSE_NOISE):
-                plot.generate_discrete_plot(self.canvas.ax, self.signal)
+                plot.generate_discrete_plot(self.canvas.ax1, self.signal)
             else:
-                plot.generate_plot(self.canvas.ax, self.signal)
+                plot.generate_plot(self.canvas.ax1, self.signal)
 
             self.canvas.draw()
             self.showing_histogram = False
             return
 
-        # if plot show hist
+        # show histogram
+        self.canvas.set_single_mode()
+
         plot.plot_histogram(
-            self.canvas.ax,
+            self.canvas.ax1,
             self.signal,
             bins=self.ui.bins.value(),
             title="Signal histogram"
@@ -271,7 +306,15 @@ class MainWindow(QMainWindow):
 
         result = sig1 + sig2
         self.signal = result
-        self.plot_signal()
+
+        self.plot_operation_result(
+            sig1,
+            sig2,
+            result,
+            "Signal 1",
+            "Signal 2",
+            "Addition Result"
+        )
 
     def op_sub(self):
         sig1, sig2 = self.get_selected_signals()
@@ -280,7 +323,15 @@ class MainWindow(QMainWindow):
 
         result = sig1 - sig2
         self.signal = result
-        self.plot_signal()
+
+        self.plot_operation_result(
+            sig1,
+            sig2,
+            result,
+            "Signal 1",
+            "Signal 2",
+            "Subtraction Result"
+        )
 
     def op_mul(self):
         sig1, sig2 = self.get_selected_signals()
@@ -289,7 +340,15 @@ class MainWindow(QMainWindow):
 
         result = sig1 * sig2
         self.signal = result
-        self.plot_signal()
+
+        self.plot_operation_result(
+            sig1,
+            sig2,
+            result,
+            "Signal 1",
+            "Signal 2",
+            "Multiplication Result"
+        )
 
     def op_div(self):
         sig1, sig2 = self.get_selected_signals()
@@ -298,8 +357,130 @@ class MainWindow(QMainWindow):
 
         result = sig1 / sig2
         self.signal = result
-        self.plot_signal()
+
+        self.plot_operation_result(
+            sig1,
+            sig2,
+            result,
+            "Signal 1",
+            "Signal 2",
+            "Division Result"
+        )
         
+    def op_convolve(self):
+        sig1, sig2 = self.get_selected_signals()
+
+        if sig1 is None:
+            return
+
+        result = sig1.convolve(sig2)
+        self.signal = result
+
+        self.plot_operation_result(
+            sig1,
+            sig2,
+            result,
+            "Signal 1",
+            "Signal 2",
+            "Convolution Result"
+        )
+    
+    def op_correlate(self):
+        sig1, sig2 = self.get_selected_signals()
+
+        if sig1 is None:
+            return
+
+        mode = self.ui.CorrMode.currentText().lower()
+
+        if mode == "direct":
+            result = cross_correlate_direct(sig1, sig2)
+        else:
+            result = cross_correlate_via_convolution(sig1, sig2)
+
+        self.signal = result
+
+        self.plot_operation_result(
+            sig1,
+            sig2,
+            result,
+            "Signal 1",
+            "Signal 2",
+            "Correlation Result"
+        )
+        
+    def op_apply_fir(self):
+        if self.signal is None:
+            return
+
+        ftype_map = {
+            "LP": FilterType.LOWPASS,
+            "BP": FilterType.BANDPASS,
+            "HP": FilterType.HIGHPASS,
+        }
+
+        window_map = {
+            "Rect": WindowType.RECTANGULAR,
+            "Hamming": WindowType.HAMMING,
+            "Hanning": WindowType.HANNING,
+            "Blackman": WindowType.BLACKMAN,
+        }
+
+        ftype = ftype_map[self.ui.FirFilter.currentText()]
+        window = window_map[self.ui.FirWindow.currentText()]
+
+        M = self.ui.MInp.value()
+        K = self.ui.KInp.value()
+
+        original = self.signal
+
+        filtered = filter_signal(
+            original,
+            M=M,
+            K=K,
+            window=window,
+            ftype=ftype
+        )
+
+        self.signal = filtered
+
+        self.plot_double_signal(
+            original,
+            filtered,
+            "Original Signal",
+            "Filtered Signal"
+        )
+
+    def op_sensor_simulation(self):
+        sensor = DistanceSensor(
+            signal_speed=self.ui.SigSpeed.value(),
+            object_speed=self.ui.ObjSpeed.value(),
+            initial_distance=self.ui.IniDist.value(),
+            sample_rate=2000,
+            buffer_size=self.ui.BuffSize.value(),
+            probe_period=0.05,
+            report_interval=0.1,
+            time_unit=5e-5,
+        )
+
+        log = sensor.run(total_time=1.0)
+
+        times = [x[0] for x in log]
+        true_dist = [x[1] for x in log]
+        estimated = [x[2] for x in log]
+
+        self.canvas.set_double_mode()
+
+        self.canvas.ax1.plot(times, true_dist)
+        self.canvas.ax1.set_title("True Distance")
+        self.canvas.ax1.grid(True)
+
+        self.canvas.ax2.plot(times, estimated)
+        self.canvas.ax2.set_title("Estimated Distance")
+        self.canvas.ax2.grid(True)
+
+        self.canvas.draw()
+
     def op_sample(self):
         if self.signal is None:
             return

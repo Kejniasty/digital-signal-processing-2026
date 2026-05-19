@@ -344,7 +344,7 @@ def generate_discrete_signal(amplitude, duration, start_time,
 
     return Signal(signal, amplitude, duration, start_time, period, sample_rate)
 
-def _window(n: int, M: int, wtype: WindowType) -> float:
+def _window(n: int, M: int, wtype: "WindowType") -> float:
     """Return w(n) for a given window of length M (n = 0..M-1)."""
     match wtype:
         case WindowType.RECTANGULAR:
@@ -363,7 +363,7 @@ def _window(n: int, M: int, wtype: WindowType) -> float:
 #--------
 
 def design_lowpass_fir(M: int, K: int,
-                       window: WindowType = "rectangular") -> list[float]:
+                       window: "WindowType" = "rectangular") -> list[float]:
     """
     Design a lowpass FIR filter using the window method.
 
@@ -391,8 +391,8 @@ def design_lowpass_fir(M: int, K: int,
 
 
 def design_fir(M: int, K: int,
-               window: WindowType = "rectangular",
-               ftype: FilterType = "lowpass") -> list[float]:
+               window: "WindowType" = "rectangular",
+               ftype: "FilterType" = "lowpass") -> list[float]:
     """
     Design a FIR filter of any supported type.
 
@@ -418,8 +418,8 @@ def make_filter_signal(coefficients: list[float], sample_rate: int) -> Signal:
 
 
 def filter_signal(x: Signal, M: int, K: int,
-                  window: WindowType = "rectangular",
-                  ftype: FilterType = "lowpass") -> Signal:
+                  window: "WindowType" = "rectangular",
+                  ftype: "FilterType" = "lowpass") -> Signal:
     """
     Filter signal x with an M-tap FIR filter designed for sample_rate=x.sample_rate.
     Returns the convolved (filtered) signal.

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1581</width>
-    <height>716</height>
+    <height>1083</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -475,6 +475,245 @@
          </layout>
         </item>
         <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_10">
+            <item>
+             <widget class="QLabel" name="label_14">
+              <property name="text">
+               <string>Signal speed</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QDoubleSpinBox" name="SigSpeed">
+              <property name="maximum">
+               <double>10000.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>340.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_15">
+              <property name="text">
+               <string>Object Speed</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QDoubleSpinBox" name="ObjSpeed">
+              <property name="maximum">
+               <double>100.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>5.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_16">
+              <property name="text">
+               <string>Initial distance</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QDoubleSpinBox" name="IniDist">
+              <property name="minimum">
+               <double>1.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>10000.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>100.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_17">
+              <property name="text">
+               <string>Buffer size</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="BuffSize">
+              <property name="minimum">
+               <number>64</number>
+              </property>
+              <property name="maximum">
+               <number>4096</number>
+              </property>
+              <property name="value">
+               <number>512</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="RunSimBtn">
+              <property name="text">
+               <string>Run Simulation</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_9">
+            <item>
+             <widget class="QLabel" name="label_7">
+              <property name="text">
+               <string>Filter type</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="FirFilter">
+              <item>
+               <property name="text">
+                <string>LP</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>BP</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>HP</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_8">
+              <property name="text">
+               <string>Window</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="FirWindow">
+              <item>
+               <property name="text">
+                <string>Rect</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Hamming</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Hanning</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Blackman</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_7">
+              <item>
+               <widget class="QLabel" name="label_9">
+                <property name="text">
+                 <string>M:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="MInp">
+                <property name="minimum">
+                 <number>3</number>
+                </property>
+                <property name="maximum">
+                 <number>255</number>
+                </property>
+                <property name="singleStep">
+                 <number>2</number>
+                </property>
+                <property name="value">
+                 <number>63</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="0,0">
+              <property name="sizeConstraint">
+               <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
+              </property>
+              <item>
+               <widget class="QLabel" name="label_13">
+                <property name="text">
+                 <string>K:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="KInp">
+                <property name="minimum">
+                 <number>2</number>
+                </property>
+                <property name="maximum">
+                 <number>64</number>
+                </property>
+                <property name="singleStep">
+                 <number>2</number>
+                </property>
+                <property name="value">
+                 <number>8</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QPushButton" name="ApplyFirBtn">
+              <property name="text">
+               <string>Apply FIR</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_9">
+          <item>
+           <widget class="QLabel" name="label_18">
+            <property name="text">
+             <string>Correlation mode</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="CorrMode">
+            <item>
+             <property name="text">
+              <string>direct</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>via convolution</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
            <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -485,6 +724,9 @@
              <widget class="QLabel" name="label">
               <property name="text">
                <string>First Signal</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignmentFlag::AlignCenter</set>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
@@ -523,6 +765,20 @@
               </property>
              </widget>
             </item>
+            <item>
+             <widget class="QPushButton" name="convBtn">
+              <property name="text">
+               <string>convolve</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="corrBtn">
+              <property name="text">
+               <string>correlate</string>
+              </property>
+             </widget>
+            </item>
            </layout>
           </item>
           <item>
@@ -534,6 +790,9 @@
              <widget class="QLabel" name="label_2">
               <property name="text">
                <string>Second Signal</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignmentFlag::AlignCenter</set>
               </property>
               <property name="wordWrap">
                <bool>true</bool>

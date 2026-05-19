@@ -49,3 +49,22 @@ def plot_histogram(ax, signal, bins=5, title="Signal histogram"):
     ax.set_xlabel("Value")
     ax.set_ylabel("Count")
     ax.grid(True, alpha=0.3)
+
+def plot_signal_auto(ax, signal: Signal):
+    """
+    Automatically choose continuous/discrete plotting style.
+    """
+
+    if len(signal.signal) == 0:
+        ax.clear()
+        ax.text(0.5, 0.5, "Empty signal",
+                ha='center', va='center')
+        return
+
+    # detect sparse impulse-like signals
+    non_zero = sum(1 for x in signal.signal if x != 0)
+
+    if signal.is_sampled or non_zero < len(signal.signal) * 0.2:
+        generate_discrete_plot(ax, signal)
+    else:
+        generate_plot(ax, signal)
