@@ -60,6 +60,7 @@ class MainWindow(QMainWindow):
         self.ui.ApplyFirBtn.clicked.connect(self.op_apply_fir)
         self.ui.RunSimBtn.clicked.connect(self.op_sensor_simulation)
 
+        self.ui.ObjSpeed.setRange(-100.0, 100.0)
 
         self.signal = None  # placeholder
         self.loaded_signals = {}  # key = filename, value = Signal object
