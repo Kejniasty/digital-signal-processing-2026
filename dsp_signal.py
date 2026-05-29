@@ -492,6 +492,33 @@ def cross_correlate_via_convolution(h: Signal, x: Signal) -> Signal:
                         for i in range(len(conv_result.signal))]
     return conv_result
 
+#-----------
+# Transforms
+#-----------
+def bit_reverse(x, N, n):
+    """Auxiliary function for creating a bit reverse list of indexes, used in FFT"""
+    for i in range(N):
+        j = 0
+        for k in range(0, n):
+            j <<= 1
+            j += (i>>k) & 1
+        if j > i:
+            t = x[i]
+            x[i] = x[j]
+            x[j] = t
+    return x
+
+def dit_fft(signal: "Signal"):
+    """
+    Fast Fourier Transform with division in time, iterative approach.
+    Accepts signals which length is a power of 2.
+    """
+    n = len(signal.signal)
+    if not ((n & (n-1) == 0) and n != 0):
+        raise ValueError("Parsed signal length is not a power of 2")
+    result = Signal()
+    return result
+
 #--------
 # Metrics
 #--------
