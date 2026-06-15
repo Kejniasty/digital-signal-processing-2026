@@ -1,6 +1,8 @@
 import math
+import cmath
 import random
 import numpy as np
+import matplotlib.pyplot as plt
 from enum import Enum
 
 
@@ -108,7 +110,7 @@ class Signal:
             self.start_time + i / self.sample_rate
             for i in range(len(self.signal))
         ]
-        
+
     def sample(self, sample_rate: int):
         """
         Sample signal by returning a signal with a smaller sample rate.
@@ -120,7 +122,7 @@ class Signal:
             raise ValueError("New sample rate must be an integer divisor of the original sample rate")
 
         step = self.sample_rate // sample_rate
-        new_signal = self.signal[::step] #slice with a given stride of step
+        new_signal = self.signal[::step]  # slice with a given stride of step
 
         return Signal(new_signal, self.amplitude, self.duration,
                       self.start_time, self.period, sample_rate, True)
@@ -262,73 +264,71 @@ class Signal:
                       self.start_time, self.period, target_sample_rate)
 
 
-#------------------
+# ------------------
 # Signal Generation
-#------------------
+# ------------------
 
 def generate_continuous_signal(amplitude, duration, start_time,
                                period, type: "SignalType",
                                coefficient=0.0, sample_rate=100):
+    sample_amount = int(duration * sample_rate)
+    signal = []
 
-        sample_amount = int(duration * sample_rate)
-        signal = []
+    for i in range(sample_amount):
+        t = start_time + i / sample_rate
 
-        for i in range(sample_amount):
-            t = start_time + i / sample_rate
+        match type:
+            case SignalType.UNIFORM_NOISE:
+                signal.append(random.uniform(-amplitude, amplitude))
 
-            match type:
-                case SignalType.UNIFORM_NOISE:
-                    signal.append(random.uniform(-amplitude, amplitude))
+            case SignalType.GAUSSIAN_NOISE:
+                signal.append(random.gauss(0, amplitude))
 
-                case SignalType.GAUSSIAN_NOISE:
-                    signal.append(random.gauss(0, amplitude))
+            case SignalType.SINE:
+                signal.append(amplitude * math.sin(2 * math.pi * (t / period)))
 
-                case SignalType.SINE:
-                    signal.append(amplitude * math.sin(2 * math.pi * (t / period)))
+            case SignalType.HALF_WAVE_RECT_SINE:
+                s = amplitude * math.sin(2 * math.pi * (t / period))
+                signal.append(max(0, s))
 
-                case SignalType.HALF_WAVE_RECT_SINE:
-                    s = amplitude * math.sin(2 * math.pi * (t / period))
-                    signal.append(max(0, s))
+            case SignalType.FULL_WAVE_RECT_SINE:
+                s = amplitude * math.sin(2 * math.pi * (t / period))
+                signal.append(abs(s))
 
-                case SignalType.FULL_WAVE_RECT_SINE:
-                    s = amplitude * math.sin(2 * math.pi * (t / period))
-                    signal.append(abs(s))
+            case SignalType.RECT:
+                local_t = (t - start_time) % period
+                duty = coefficient * period
+                signal.append(amplitude if local_t < duty else 0)
 
-                case SignalType.RECT:
-                    local_t = (t - start_time) % period
-                    duty = coefficient * period
-                    signal.append(amplitude if local_t < duty else 0)
+            case SignalType.RECT_SYMMETRIC:
+                local_t = (t - start_time) % period
+                duty = coefficient * period
+                signal.append(amplitude if local_t < duty else -amplitude)
 
-                case SignalType.RECT_SYMMETRIC:
-                    local_t = (t - start_time) % period
-                    duty = coefficient * period
-                    signal.append(amplitude if local_t < duty else -amplitude)
+            case SignalType.TRIANGULAR:
+                local_t = (t - start_time) % period
+                if local_t < coefficient * period:
+                    signal.append((amplitude / (coefficient * period)) * local_t)
+                else:
+                    signal.append(
+                        amplitude - (amplitude / ((1 - coefficient) * period)) *
+                        (local_t - coefficient * period)
+                    )
 
-                case SignalType.TRIANGULAR:
-                    local_t = (t - start_time) % period
-                    if local_t < coefficient * period:
-                        signal.append((amplitude / (coefficient * period)) * local_t)
-                    else:
-                        signal.append(
-                            amplitude - (amplitude / ((1 - coefficient) * period)) *
-                            (local_t - coefficient * period)
-                        )
+            case SignalType.HEAVISIDE_STEP:
+                if t < coefficient:
+                    signal.append(0)
+                elif t == coefficient:
+                    signal.append(amplitude / 2)
+                else:
+                    signal.append(amplitude)
 
-                case SignalType.HEAVISIDE_STEP:
-                    if t < coefficient:
-                        signal.append(0)
-                    elif t == coefficient:
-                        signal.append(amplitude / 2)
-                    else:
-                        signal.append(amplitude)
-
-        return Signal(signal, amplitude, duration, start_time, period, sample_rate)
+    return Signal(signal, amplitude, duration, start_time, period, sample_rate)
 
 
 def generate_discrete_signal(amplitude, duration, start_time,
                              period, type: "SignalType",
                              coefficient, sample_rate=100):
-
     sample_amount = int(duration * sample_rate)
     signal = []
 
@@ -344,23 +344,25 @@ def generate_discrete_signal(amplitude, duration, start_time,
 
     return Signal(signal, amplitude, duration, start_time, period, sample_rate)
 
+
 def _window(n: int, M: int, wtype: "WindowType") -> float:
     """Return w(n) for a given window of length M (n = 0..M-1)."""
     match wtype:
         case WindowType.RECTANGULAR:
             return 1.0
-        case WindowType.HAMMING:            # eq. (5)
+        case WindowType.HAMMING:  # eq. (5)
             return 0.53836 - 0.46164 * math.cos(2 * math.pi * n / M)
-        case WindowType.HANNING:            # eq. (6)
+        case WindowType.HANNING:  # eq. (6)
             return 0.5 - 0.5 * math.cos(2 * math.pi * n / M)
-        case WindowType.BLACKMAN:           # eq. (7)
+        case WindowType.BLACKMAN:  # eq. (7)
             return (0.42
-                    - 0.5  * math.cos(2 * math.pi * n / M)
+                    - 0.5 * math.cos(2 * math.pi * n / M)
                     + 0.08 * math.cos(4 * math.pi * n / M))
 
-#--------
+
+# --------
 # Filters
-#--------
+# --------
 
 def design_lowpass_fir(M: int, K: int,
                        window: "WindowType" = "rectangular") -> list[float]:
@@ -428,9 +430,10 @@ def filter_signal(x: Signal, M: int, K: int,
     h_sig = make_filter_signal(coeffs, x.sample_rate)
     return x.convolve(h_sig)
 
-#------------------
+
+# ------------------
 # Cross-correlation
-#------------------
+# ------------------
 
 def cross_correlate_direct(h: Signal, x: Signal) -> Signal:
     """
@@ -492,36 +495,406 @@ def cross_correlate_via_convolution(h: Signal, x: Signal) -> Signal:
                         for i in range(len(conv_result.signal))]
     return conv_result
 
-#-----------
+
+# ----------------
+# Complex Signals
+# ----------------
+
+class ComplexSignal:
+    """
+    Represents a discrete signal with complex-valued samples.
+
+    Used to store the result of a Fourier-type transform (F1/F2), i.e. a
+    spectrum X(m), m = 0..N-1, corresponding to the frequency m*f0
+    (eq. F-3: f0 = fpr / N).
+    """
+
+    def __init__(self, signal=None, sample_rate=100):
+        self.signal = [complex(v) for v in signal] if signal is not None else []
+        self.sample_rate = sample_rate
+        self.N = len(self.signal)
+        self.f0 = self.sample_rate / self.N if self.N > 0 else 0.0
+        self.freq = [m * self.f0 for m in range(self.N)]
+
+    def __str__(self):
+        """Serialize to text: header line 'sample_rate;N' + 're,im' pairs."""
+        header = f"{self.sample_rate};{self.N}\n"
+        values = " ".join(f"{v.real},{v.imag}" for v in self.signal)
+        return header + values + "\n"
+
+    def from_string(self, string: str):
+        """Read a complex signal previously written with __str__."""
+        lines = string.strip().split("\n")
+        stats = lines[0].split(";")
+        self.sample_rate = int(stats[0])
+
+        self.signal = []
+        if len(lines) > 1 and lines[1].strip():
+            for token in lines[1].split():
+                re_str, im_str = token.split(",")
+                self.signal.append(complex(float(re_str), float(im_str)))
+
+        self.N = len(self.signal)
+        self.f0 = self.sample_rate / self.N if self.N > 0 else 0.0
+        self.freq = [m * self.f0 for m in range(self.N)]
+
+    def real_part(self):
+        return [v.real for v in self.signal]
+
+    def imag_part(self):
+        return [v.imag for v in self.signal]
+
+    def magnitude(self):
+        return [abs(v) for v in self.signal]
+
+    def phase(self):
+        return [cmath.phase(v) for v in self.signal]
+
+    def plot_w1(self, title="Widmo sygnalu (W1)"):
+        """
+        (W1) - gorny wykres: czesc rzeczywista amplitudy w funkcji
+        czestotliwosci, dolny wykres: czesc urojona.
+        """
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
+        fig.suptitle(title)
+
+        ax1.stem(self.freq, self.real_part())
+        ax1.set_ylabel("Re{X(m)}")
+        ax1.grid(True)
+
+        ax2.stem(self.freq, self.imag_part())
+        ax2.set_ylabel("Im{X(m)}")
+        ax2.set_xlabel("f [Hz]")
+        ax2.grid(True)
+
+        fig.tight_layout()
+        return fig
+
+    def plot_w2(self, title="Widmo sygnalu (W2)"):
+        """
+        (W2) - gorny wykres: modul liczby zespolonej w funkcji
+        czestotliwosci, dolny wykres: argument liczby zespolonej.
+        """
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
+        fig.suptitle(title)
+
+        ax1.stem(self.freq, self.magnitude())
+        ax1.set_ylabel("|X(m)|")
+        ax1.grid(True)
+
+        ax2.stem(self.freq, self.phase())
+        ax2.set_ylabel("arg{X(m)} [rad]")
+        ax2.set_xlabel("f [Hz]")
+        ax2.grid(True)
+
+        fig.tight_layout()
+        return fig
+
+
+# -----------
 # Transforms
-#-----------
+# -----------
 def bit_reverse(x, N, n):
-    """Auxiliary function for creating a bit reverse list of indexes, used in FFT"""
+    """
+    Auxiliary function that permutes a list according to the
+    bit-reversed order of indices (used as the first step of the
+    iterative, in-place radix-2 FFT).
+
+    x - list to permute (modified in place and returned)
+    N - length of x
+    n - number of bits, i.e. n = log2(N)
+    """
     for i in range(N):
         j = 0
         for k in range(0, n):
             j <<= 1
-            j += (i>>k) & 1
+            j += (i >> k) & 1
         if j > i:
-            t = x[i]
-            x[i] = x[j]
-            x[j] = t
+            x[i], x[j] = x[j], x[i]
     return x
 
-def dit_fft(signal: "Signal"):
-    """
-    Fast Fourier Transform with division in time, iterative approach.
-    Accepts signals which length is a power of 2.
-    """
-    n = len(signal.signal)
-    if not ((n & (n-1) == 0) and n != 0):
-        raise ValueError("Parsed signal length is not a power of 2")
-    result = Signal()
-    return result
 
-#--------
+def _check_power_of_two(N: int):
+    """Verify N = 2**n for n in [1, 10], as required by the task description."""
+    if N == 0 or (N & (N - 1)) != 0:
+        raise ValueError("Signal length must be a power of two (2^n, n=1..10)")
+
+
+def dft(signal: "Signal") -> "ComplexSignal":
+    """
+    (F1) Discrete Fourier Transform, computed directly from the
+    definition (F-1)/(F-5). Complexity O(N^2).
+    """
+    x = signal.signal
+    N = len(x)
+    _check_power_of_two(N)
+
+    X = []
+    for m in range(N):
+        acc = 0j
+        for n in range(N):
+            acc += x[n] * cmath.exp(-2j * math.pi * m * n / N)
+        X.append(acc / N)
+
+    return ComplexSignal(X, signal.sample_rate)
+
+
+def idft(spectrum: "ComplexSignal") -> "Signal":
+    """
+    Inverse Discrete Fourier Transform, computed directly from the
+    definition (F-2). Complexity O(N^2). Returns the real part of
+    x(n) as a Signal (the imaginary part is dropped, as expected for
+    a real-valued input signal).
+    """
+    X = spectrum.signal
+    N = len(X)
+    _check_power_of_two(N)
+
+    x = []
+    for n in range(N):
+        acc = 0j
+        for m in range(N):
+            acc += X[m] * cmath.exp(2j * math.pi * m * n / N)
+        x.append(acc.real)
+
+    amp = max((abs(v) for v in x), default=0.0)
+    return Signal(x, amp, N / spectrum.sample_rate, 0.0, 0.0, spectrum.sample_rate)
+
+
+def _fft_iterative(x: list, inverse: bool) -> list:
+    """
+    Core iterative radix-2 FFT (decimation in time, in-place).
+
+    The input vector is first reordered using `bit_reverse`, so that
+    it can be treated as N one-point transforms, then combined
+    bottom-up (2-point, 4-point, ... N-point) using the butterfly
+    structure described by eq. (F-12).
+
+    inverse=False -> forward transform with kernel exp(-j*2*pi*k/size),
+                      result divided by N (eq. F-1/F-5).
+    inverse=True  -> inverse transform with kernel exp(+j*2*pi*k/size),
+                      result NOT divided by N (eq. F-2).
+    """
+    N = len(x)
+    _check_power_of_two(N)
+
+    n_bits = N.bit_length() - 1  # log2(N)
+    x = bit_reverse(list(x), N, n_bits)
+
+    sign = 1 if inverse else -1
+    size = 2
+    while size <= N:
+        half = size // 2
+        w_step = cmath.exp(sign * 2j * math.pi / size)  # W_size^{sign}
+        for start in range(0, N, size):
+            w = 1 + 0j
+            for k in range(half):
+                t = w * x[start + k + half]
+                u = x[start + k]
+                x[start + k] = u + t  # F-12, first row
+                x[start + k + half] = u - t  # F-12, second row
+                w *= w_step
+        size *= 2
+
+    if not inverse:
+        x = [v / N for v in x]
+
+    return x
+
+
+def dit_fft(signal: "Signal") -> "ComplexSignal":
+    """
+    (F1) Fast Fourier Transform with decimation in time (DIT FFT),
+    implemented iteratively and in-place, based on `bit_reverse`.
+    Accepts signals whose length is a power of two (2^n, n=1..10).
+    Complexity O(N log2 N).
+    """
+    x = [complex(v) for v in signal.signal]
+    X = _fft_iterative(x, inverse=False)
+    return ComplexSignal(X, signal.sample_rate)
+
+
+def idit_fft(spectrum: "ComplexSignal") -> "Signal":
+    """
+    Inverse of `dit_fft`, iterative, based on `bit_reverse`.
+    Per the task description, the inverse transform uses a kernel
+    without the minus sign in the exponent and the result is NOT
+    divided by N. Returns the real part of x(n) as a Signal.
+    """
+    X = [complex(v) for v in spectrum.signal]
+    x = _fft_iterative(X, inverse=True)
+    real_part = [v.real for v in x]
+
+    amp = max((abs(v) for v in real_part), default=0.0)
+    return Signal(real_part, amp, len(real_part) / spectrum.sample_rate,
+                  0.0, 0.0, spectrum.sample_rate)
+
+
+def compare_dft_fft_speed(signal: "Signal") -> dict:
+    """
+    Helper for the report (F1): compares the execution time of the
+    direct DFT (algorithm from the definition) and the iterative
+    DIT FFT for the given signal.
+
+    Returns a dict {"dft": (ComplexSignal, time_seconds),
+                     "fft": (ComplexSignal, time_seconds)}.
+    """
+    import time
+
+    t0 = time.perf_counter()
+    X_dft = dft(signal)
+    t_dft = time.perf_counter() - t0
+
+    t0 = time.perf_counter()
+    X_fft = dit_fft(signal)
+    t_fft = time.perf_counter() - t0
+
+    return {
+        "dft": (X_dft, t_dft),
+        "fft": (X_fft, t_fft),
+    }
+
+
+# -----------------
+# Wavelet Transform
+# -----------------
+
+def _normalize_filter(h: list) -> list:
+    """Scale filter coefficients so that sum(h_k^2) == 1 (eq. TF-5)."""
+    norm = math.sqrt(sum(c * c for c in h))
+    return [c / norm for c in h]
+
+
+def _qmf_highpass(h: list) -> list:
+    """
+    Derive the high-pass (detail) filter G from the low-pass (scaling)
+    filter H using the quadrature mirror relation
+    g_k = (-1)^k * h_{K-1-k} (eq. TF-9).
+    """
+    K = len(h)
+    return [((-1) ** k) * h[K - 1 - k] for k in range(K)]
+
+
+def _db4_lowpass() -> list:
+    """Daubechies 4 (K=4) low-pass coefficients (eq. TF-9)."""
+    sqrt3 = math.sqrt(3.0)
+    sqrt2 = math.sqrt(2.0)
+    h0 = (1 + sqrt3) / (4 * sqrt2)
+    h1 = (3 + sqrt3) / (4 * sqrt2)
+    h2 = (3 - sqrt3) / (4 * sqrt2)
+    h3 = (1 - sqrt3) / (4 * sqrt2)
+    return _normalize_filter([h0, h1, h2, h3])
+
+
+# Low-pass (scaling) filters H for the supported wavelets.
+# DB6 and DB8 coefficients are given in the handout (eq. TF-10, TF-11)
+# scaled so that sum(h_k) = 2; they are re-normalised here so that
+# sum(h_k^2) = 1, as required by the orthogonality conditions (eq. TF-5).
+WAVELET_FILTERS = {
+    "db4": _db4_lowpass(),
+    "db6": _normalize_filter([0.47046721, 1.14111692, 0.650365,
+                              -0.19093442, -0.12083221, 0.0498175]),
+    "db8": _normalize_filter([0.32580343, 1.01094572, 0.8922014, -0.03957503,
+                              -0.26450717, 0.0436163, 0.0465036, -0.01498699]),
+}
+
+
+def dwt_one_level(signal: "Signal", wavelet: str = "db4"):
+    """
+    (T3) Single-level discrete wavelet transform.
+
+    The N-point input signal x(n) is filtered with the low-pass filter H
+    and the high-pass filter G (eq. TF-1/TF-2, circular convolution so
+    that periodic boundary conditions are used), and each branch is
+    down-sampled by 2 (block "v2"), producing two N/2-point signals:
+
+      - x1(n): approximation (low-pass / scaling) coefficients
+      - x2(n): detail (high-pass / wavelet) coefficients
+
+    wavelet: one of "db4", "db6", "db8"
+
+    Returns (x1, x2) as Signal objects (each of length N/2).
+    """
+    if wavelet not in WAVELET_FILTERS:
+        raise ValueError(f"Unsupported wavelet '{wavelet}', "
+                         f"available: {list(WAVELET_FILTERS)}")
+
+    x = signal.signal
+    N = len(x)
+    _check_power_of_two(N)
+    if N < 2:
+        raise ValueError("Signal must contain at least 2 samples")
+
+    h = WAVELET_FILTERS[wavelet]
+    g = _qmf_highpass(h)
+    K = len(h)
+    half = N // 2
+
+    x1 = [0.0] * half
+    x2 = [0.0] * half
+    for n in range(half):
+        sh = 0.0
+        sg = 0.0
+        for k in range(K):
+            sample = x[(2 * n - k) % N]
+            sh += h[k] * sample
+            sg += g[k] * sample
+        x1[n] = sh
+        x2[n] = sg
+
+    new_sr = max(1, signal.sample_rate // 2)
+    sig1 = Signal(x1, max((abs(v) for v in x1), default=0.0),
+                  signal.duration / 2, signal.start_time, signal.period, new_sr)
+    sig2 = Signal(x2, max((abs(v) for v in x2), default=0.0),
+                  signal.duration / 2, signal.start_time, signal.period, new_sr)
+    return sig1, sig2
+
+
+def idwt_one_level(approx: "Signal", detail: "Signal", wavelet: str = "db4") -> "Signal":
+    """
+    Inverse of `dwt_one_level`. Reconstructs the N-point signal x(n)
+    from its approximation x1(n) and detail x2(n) coefficients (each of
+    length N/2), using the same filters H and G as the forward
+    transform (the synthesis operation is the adjoint of the analysis
+    operation, which is exact for the orthogonal Daubechies filters
+    used here, eq. TF-3).
+    """
+    if wavelet not in WAVELET_FILTERS:
+        raise ValueError(f"Unsupported wavelet '{wavelet}', "
+                         f"available: {list(WAVELET_FILTERS)}")
+    if len(approx.signal) != len(detail.signal):
+        raise ValueError("Approximation and detail signals must have equal length")
+
+    h = WAVELET_FILTERS[wavelet]
+    g = _qmf_highpass(h)
+    K = len(h)
+
+    half = len(approx.signal)
+    N = half * 2
+
+    # "v2": insert zeros at the positions dropped during analysis
+    up1 = [0.0] * N
+    up2 = [0.0] * N
+    for n in range(half):
+        up1[2 * n] = approx.signal[n]
+        up2[2 * n] = detail.signal[n]
+
+    out = [0.0] * N
+    for n in range(N):
+        s = 0.0
+        for k in range(K):
+            idx = (n + k) % N
+            s += h[k] * up1[idx] + g[k] * up2[idx]
+        out[n] = s
+
+    new_sr = approx.sample_rate * 2
+    amp = max((abs(v) for v in out), default=0.0)
+    return Signal(out, amp, approx.duration * 2, approx.start_time, approx.period, new_sr)
+
+
+# --------
 # Metrics
-#--------
+# --------
 
 def mse(original: Signal, quantized: Signal):
     """Mean Squared Error"""
@@ -554,9 +927,10 @@ def md(original: Signal, quantized: Signal):
     s1, s2, _ = original.pad(quantized)
     return max(abs(a - b) for a, b in zip(s1, s2))
 
-#------
+
+# ------
 # Enums
-#------
+# ------
 
 class SignalType(Enum):
     UNIFORM_NOISE = 0
@@ -570,6 +944,7 @@ class SignalType(Enum):
     HEAVISIDE_STEP = 8
     DIRAC_DELTA = 9
     IMPULSE_NOISE = 10
+
 
 class WindowType(Enum):
     RECTANGULAR = "rectangular"
