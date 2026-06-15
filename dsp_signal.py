@@ -1092,7 +1092,11 @@ def fct2(signal: Signal) -> Signal:
             -1j * math.pi * m / (2 * N)
         )
 
-        value = (c * factor * Y.signal[m]).real
+        value = (
+                c *
+                factor *
+                (N * Y.signal[m])
+        ).real
 
         X.append(value)
 
