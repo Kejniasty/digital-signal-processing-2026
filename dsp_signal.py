@@ -754,6 +754,82 @@ def compare_dft_fft_speed(signal: "Signal") -> dict:
         "fft": (X_fft, t_fft),
     }
 
+# -------------------------
+# FFT DIF (Decimation in Frequency)
+# -------------------------
+
+def dif_fft(signal: Signal) -> ComplexSignal:
+    """
+    FFT radix-2 DIF (Decimation In Frequency).
+    """
+    x = [complex(v) for v in signal.signal]
+
+    N = len(x)
+    _check_power_of_two(N)
+
+    size = N
+    while size >= 2:
+        half = size // 2
+
+        for start in range(0, N, size):
+            for k in range(half):
+                a = x[start + k]
+                b = x[start + k + half]
+
+                x[start + k] = a + b
+
+                twiddle = cmath.exp(-2j * math.pi * k / size)
+                x[start + k + half] = (a - b) * twiddle
+
+        size //= 2
+
+    n_bits = N.bit_length() - 1
+    x = bit_reverse(x, N, n_bits)
+
+    x = [v / N for v in x]
+
+    return ComplexSignal(x, signal.sample_rate)
+
+
+def idif_fft(spectrum: ComplexSignal) -> Signal:
+    """
+    Reverse FFT DIF.
+    """
+    x = [complex(v) for v in spectrum.signal]
+
+    N = len(x)
+    _check_power_of_two(N)
+
+    n_bits = N.bit_length() - 1
+    x = bit_reverse(x, N, n_bits)
+
+    size = 2
+
+    while size <= N:
+        half = size // 2
+
+        for start in range(0, N, size):
+            for k in range(half):
+                twiddle = cmath.exp(2j * math.pi * k / size)
+
+                a = x[start + k]
+                b = x[start + k + half]
+
+                x[start + k] = a + b * twiddle
+                x[start + k + half] = a - b * twiddle
+
+        size *= 2
+
+    real = [v.real for v in x]
+
+    return Signal(
+        real,
+        max(abs(v) for v in real),
+        N / spectrum.sample_rate,
+        0.0,
+        0.0,
+        spectrum.sample_rate
+    )
 
 # -----------------
 # Wavelet Transform
@@ -891,6 +967,242 @@ def idwt_one_level(approx: "Signal", detail: "Signal", wavelet: str = "db4") -> 
     amp = max((abs(v) for v in out), default=0.0)
     return Signal(out, amp, approx.duration * 2, approx.start_time, approx.period, new_sr)
 
+# -------------------------
+# DCT-II
+# -------------------------
+
+def dct2(signal: Signal) -> Signal:
+    """
+    DCT-II function.
+    """
+
+    x = signal.signal
+    N = len(x)
+
+    _check_power_of_two(N)
+
+    X = []
+
+    for m in range(N):
+
+        if m == 0:
+            c = math.sqrt(1 / N)
+        else:
+            c = math.sqrt(2 / N)
+
+        acc = 0.0
+
+        for n in range(N):
+            acc += x[n] * math.cos(
+                math.pi * (2 * n + 1) * m / (2 * N)
+            )
+
+        X.append(c * acc)
+
+    return Signal(
+        X,
+        max(abs(v) for v in X),
+        signal.duration,
+        signal.start_time,
+        signal.period,
+        signal.sample_rate
+    )
+
+
+def idct2(signal: Signal) -> Signal:
+    """
+    Inverse DCT-II.
+    """
+
+    X = signal.signal
+    N = len(X)
+
+    x = []
+
+    for n in range(N):
+
+        acc = 0.0
+
+        for m in range(N):
+
+            if m == 0:
+                c = math.sqrt(1 / N)
+            else:
+                c = math.sqrt(2 / N)
+
+            acc += (
+                c *
+                X[m] *
+                math.cos(
+                    math.pi * (2 * n + 1) * m / (2 * N)
+                )
+            )
+
+        x.append(acc)
+
+    return Signal(
+        x,
+        max(abs(v) for v in x),
+        signal.duration,
+        signal.start_time,
+        signal.period,
+        signal.sample_rate
+    )
+
+# -------------------------
+# Fast DCT-II (FCT-II)
+# -------------------------
+
+def fct2(signal: Signal) -> Signal:
+
+    x = signal.signal
+    N = len(x)
+
+    _check_power_of_two(N)
+
+    y = [0.0] * N
+
+    half = N // 2
+
+    for n in range(half):
+        y[n] = x[2 * n]
+        y[N - 1 - n] = x[2 * n + 1]
+
+    Y = dit_fft(
+        Signal(
+            y,
+            signal.amplitude,
+            signal.duration,
+            signal.start_time,
+            signal.period,
+            signal.sample_rate
+        )
+    )
+
+    X = []
+
+    for m in range(N):
+
+        if m == 0:
+            c = math.sqrt(1 / N)
+        else:
+            c = math.sqrt(2 / N)
+
+        factor = cmath.exp(
+            -1j * math.pi * m / (2 * N)
+        )
+
+        value = (c * factor * Y.signal[m]).real
+
+        X.append(value)
+
+    return Signal(
+        X,
+        max(abs(v) for v in X),
+        signal.duration,
+        signal.start_time,
+        signal.period,
+        signal.sample_rate
+    )
+
+# -------------------------
+# Walsh-Hadamard
+# -------------------------
+
+def hadamard_matrix(order: int):
+
+    if order == 0:
+        return np.array([[1.0]])
+
+    H = hadamard_matrix(order - 1)
+
+    return (
+        1 / math.sqrt(2)
+    ) * np.block([
+        [H, H],
+        [H, -H]
+    ])
+
+
+def walsh_hadamard(signal: Signal) -> Signal:
+    """
+    Walsh-Hadamard transform.
+    """
+
+    N = len(signal.signal)
+
+    _check_power_of_two(N)
+
+    m = int(math.log2(N))
+
+    H = hadamard_matrix(m)
+
+    X = H @ np.array(signal.signal)
+
+    X = X.tolist()
+
+    return Signal(
+        X,
+        max(abs(v) for v in X),
+        signal.duration,
+        signal.start_time,
+        signal.period,
+        signal.sample_rate
+    )
+
+# -------------------------
+# Fast Walsh-Hadamard
+# -------------------------
+
+def fast_walsh_hadamard(signal: Signal) -> Signal:
+    """
+    Fast Walsh-Hadamard transform.
+    O(N log2 N)
+    """
+
+    x = list(signal.signal)
+
+    N = len(x)
+
+    _check_power_of_two(N)
+
+    h = 1
+
+    while h < N:
+
+        for i in range(0, N, h * 2):
+
+            for j in range(i, i + h):
+
+                a = x[j]
+                b = x[j + h]
+
+                x[j] = a + b
+                x[j + h] = a - b
+
+        h *= 2
+
+    scale = 1 / math.sqrt(N)
+
+    x = [v * scale for v in x]
+
+    return Signal(
+        x,
+        max(abs(v) for v in x),
+        signal.duration,
+        signal.start_time,
+        signal.period,
+        signal.sample_rate
+    )
+
+
+def ifast_walsh_hadamard(signal: Signal) -> Signal:
+    """
+    WHT is ortogonal:
+    H^-1 = H^T = H
+    """
+
+    return fast_walsh_hadamard(signal)
 
 # --------
 # Metrics
