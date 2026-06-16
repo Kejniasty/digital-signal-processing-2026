@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1581</width>
-    <height>1083</height>
+    <width>1765</width>
+    <height>1164</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -18,8 +18,8 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>1581</width>
-    <height>656</height>
+    <width>1765</width>
+    <height>1164</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -710,6 +710,114 @@
              </property>
             </item>
            </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_10">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_11">
+            <item>
+             <widget class="QLabel" name="label_19">
+              <property name="text">
+               <string>Transform</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="Transform">
+              <item>
+               <property name="text">
+                <string>DFT</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>FFT DIT</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>FFT DIF</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>DCT II</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>FCT II</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Walsh-Hadamard</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Fast Walsh-Hadamard</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Wavelet DB4</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Wavelet DB6</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Wavelet DB8</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="ApplyTransBtn">
+              <property name="text">
+               <string>Apply Transform</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_12">
+            <item>
+             <widget class="QLabel" name="label_20">
+              <property name="text">
+               <string>View</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="View">
+              <item>
+               <property name="text">
+                <string>Real / Imag</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Magnitude / Phase</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="ExecLabel">
+              <property name="text">
+               <string>Execution Time:</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </item>

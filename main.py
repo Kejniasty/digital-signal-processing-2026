@@ -1,9 +1,11 @@
 import sys
 import os
+import time
 from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile
 from PySide6.QtWidgets import QFileDialog
+from PySide6.QtWidgets import QMessageBox
 
 import plot
 from dsp_signal import *
@@ -59,6 +61,7 @@ class MainWindow(QMainWindow):
         self.ui.corrBtn.clicked.connect(self.op_correlate)
         self.ui.ApplyFirBtn.clicked.connect(self.op_apply_fir)
         self.ui.RunSimBtn.clicked.connect(self.op_sensor_simulation)
+        self.ui.ApplyTransBtn.clicked.connect(self.op_transform)
 
         self.ui.ObjSpeed.setRange(-100.0, 100.0)
 
@@ -274,7 +277,10 @@ class MainWindow(QMainWindow):
             self.loaded_signals[filename] = self.signal
             self.refresh_signal_dropdowns()
 
-            self.plot_signal()
+            if isinstance(self.signal, ComplexSignal):
+                self.show_transform_result(self.signal)
+            else:
+                self.plot_signal()
 
     def pretty_name(self, path: str) -> str:
         base = os.path.basename(path)
@@ -596,6 +602,153 @@ class MainWindow(QMainWindow):
         self.signal = sampled
         self.original_signal = sampled
         self.plot_signal()
+    
+    def values_to_signal(self, values, sample_rate):
+        return Signal(
+            signal=list(values),
+            amplitude=max(abs(v) for v in values) if values else 0.0,
+            duration=len(values) / sample_rate if sample_rate else 1.0,
+            start_time=0.0,
+            period=0.0,
+            sample_rate=sample_rate,
+        )
+
+    def op_transform(self):
+        if self.signal is None:
+            return
+
+        transform = self.ui.Transform.currentText()
+
+        try:
+
+            start = time.perf_counter()
+
+            match transform:
+
+                case "DFT":
+                    result = dft(self.signal)
+
+                case "FFT DIT":
+                    result = dit_fft(self.signal)
+
+                case "FFT DIF":
+                    result = dif_fft(self.signal)
+
+                case "DCT II":
+                    result = dct2(self.signal)
+
+                case "FCT II":
+                    result = fct2(self.signal)
+
+                case "Walsh-Hadamard":
+                    result = walsh_hadamard(self.signal)
+
+                case "Fast Walsh-Hadamard":
+                    result = fast_walsh_hadamard(self.signal)
+
+                case "Wavelet DB4":
+                    result = dwt_one_level(self.signal, "db4")
+
+                case "Wavelet DB6":
+                    result = dwt_one_level(self.signal, "db6")
+
+                case "Wavelet DB8":
+                    result = dwt_one_level(self.signal, "db8")
+
+                case _:
+                    return
+
+            end = time.perf_counter()
+
+            self.ui.ExecLabel.setText(
+                f"Execution Time: {(end - start) * 1000:.3f} ms"
+            )
+
+            if not isinstance(result, tuple):
+                self.signal = result
+
+            self.show_transform_result(result)
+
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Transform Error",
+                str(e)
+            )
+
+    def show_transform_result(self, result):
+        #
+        # Wavelets
+        #
+        if isinstance(result, tuple):
+
+            approx, detail = result
+
+            self.plot_double_signal(
+                approx,
+                detail,
+                "Approximation",
+                "Detail"
+            )
+
+            return
+
+        #
+        # Fourier
+        #
+        if isinstance(result, ComplexSignal):
+
+            view = self.ui.View.currentText()
+
+            if view == "Real / Imag":
+
+                real_sig = self.values_to_signal(
+                    result.real_part(),
+                    result.sample_rate
+                )
+
+                imag_sig = self.values_to_signal(
+                    result.imag_part(),
+                    result.sample_rate
+                )
+
+                self.plot_double_signal(
+                    real_sig,
+                    imag_sig,
+                    "Real Part",
+                    "Imaginary Part"
+                )
+
+            else:
+
+                mag_sig = self.values_to_signal(
+                    result.magnitude(),
+                    result.sample_rate
+                )
+
+                phase_sig = self.values_to_signal(
+                    result.phase(),
+                    result.sample_rate
+                )
+
+                self.plot_double_signal(
+                    mag_sig,
+                    phase_sig,
+                    "Magnitude",
+                    "Phase"
+                )
+
+            return
+
+        #
+        # DCT / FCT / Walsh
+        #
+        if isinstance(result, Signal):
+
+            self.plot_single_signal(
+                result,
+                "Transform Result"
+            )
 
 
 
