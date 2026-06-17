@@ -39,6 +39,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.canvas)
         self.ui.plots.setLayout(layout)
         self.showing_histogram = False
+        self.last_wavelet_result = None
 
 
         # Connect UI elements
@@ -631,11 +632,20 @@ class MainWindow(QMainWindow):
                 case "FFT DIT":
                     result = dit_fft(self.signal)
 
+                case "IFFT DIT":
+                    result = idit_fft(self.signal)
+
                 case "FFT DIF":
                     result = dif_fft(self.signal)
 
+                case "IFFT DIF":
+                    result = idif_fft(self.signal)
+
                 case "DCT II":
                     result = dct2(self.signal)
+
+                case "IDCT II":
+                    result = idct2(self.signal)
 
                 case "FCT II":
                     result = fct2(self.signal)
@@ -648,12 +658,27 @@ class MainWindow(QMainWindow):
 
                 case "Wavelet DB4":
                     result = dwt_one_level(self.signal, "db4")
+                    self.last_wavelet_result = result
+
+                case "Inverse Wavelet DB4":
+                    approx, detail = self.last_wavelet_result
+                    result = idwt_one_level(approx, detail, "db4")
 
                 case "Wavelet DB6":
                     result = dwt_one_level(self.signal, "db6")
+                    self.last_wavelet_result = result
+                
+                case "Inverse Wavelet DB6":
+                    approx, detail = self.last_wavelet_result
+                    result = idwt_one_level(approx, detail, "db6")
 
                 case "Wavelet DB8":
                     result = dwt_one_level(self.signal, "db8")
+                    self.last_wavelet_result = result
+
+                case "Inverse Wavelet DB8":
+                    approx, detail = self.last_wavelet_result
+                    result = idwt_one_level(approx, detail, "db8")
 
                 case _:
                     return

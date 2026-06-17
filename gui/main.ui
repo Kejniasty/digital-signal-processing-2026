@@ -728,6 +728,11 @@
              <widget class="QComboBox" name="Transform">
               <item>
                <property name="text">
+                <string>--- Fourier ---</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
                 <string>DFT</string>
                </property>
               </item>
@@ -738,7 +743,22 @@
               </item>
               <item>
                <property name="text">
+                <string>IFFT DIT</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
                 <string>FFT DIF</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>IFFT DIF</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>--- Cosine ---</string>
                </property>
               </item>
               <item>
@@ -748,7 +768,17 @@
               </item>
               <item>
                <property name="text">
+                <string>IDCT II</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
                 <string>FCT II</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>--- Walsh ---</string>
                </property>
               </item>
               <item>
@@ -763,7 +793,17 @@
               </item>
               <item>
                <property name="text">
+                <string>--- Wavelets ---</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
                 <string>Wavelet DB4</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Inverse Wavelet DB4</string>
                </property>
               </item>
               <item>
@@ -773,7 +813,17 @@
               </item>
               <item>
                <property name="text">
+                <string>Inverse Wavelet DB6</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
                 <string>Wavelet DB8</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Inverse Wavelet DB8</string>
                </property>
               </item>
              </widget>
